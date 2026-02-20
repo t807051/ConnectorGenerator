@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solvatio>
+
+	<service serviceId="com.telus.connector.cloudcheck.tmf.rest">
+	    <property name="endpoint" value="https://my-server:443"/>
+	    <property name="authenticationType" value="oauth"/>
+	    <property name="username" value="aUser"/>
+		<property name="password" type="password" value="DxWmHXVdzl4zBmAljiUvrEqTyACJclXd"/>
+	    <property name="initialToken" value="1223456-tzioenwb-09876-erettr"/>
+	    <property name="authorizationServer" value="https://my-auth-server:443"/>
+	    <property name="timeout" type="long" value="30000"/>
+	</service>
+
+</solvatio>

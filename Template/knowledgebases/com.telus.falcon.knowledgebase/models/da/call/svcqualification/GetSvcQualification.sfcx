@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:notation="http://www.eclipse.org/gmf/runtime/1.0.2/notation" xmlns:process="http://www.iisy.de/solvatio/process/9.0.0">
+  <process:ProcessDefinition xmi:id="_1QTb8O4pEe-rpqEWPjPNRg" id="_7iOkYAK3EfG2Qtu_66WDjA" name="GetSvcQualification" version="10.0">
+    <elements xsi:type="process:EmptyStartEvent" xmi:id="_QLQF0u4yEe-y9rNWeAQodg" id="_7iOkYQK3EfG2Qtu_66WDjA" outgoingConnections="_QLR7Bu4yEe-y9rNWeAQodg"/>
+    <elements xsi:type="process:ConnectorTask" xmi:id="_QLQF0-4yEe-y9rNWeAQodg" id="_7iOkYgK3EfG2Qtu_66WDjA" name="SyncCustomerTVSubscriptionsList" incomingConnections="_QLR7Bu4yEe-y9rNWeAQodg" outgoingConnections="_QLSiEO4yEe-y9rNWeAQodg" identifier="response">
+      <boundaryEvents xsi:type="process:ErrorBoundaryEvent" xmi:id="_QLQF1O4yEe-y9rNWeAQodg" id="_QLTwMO4yEe-y9rNWeAQodg" outgoingConnections="_QLSiF-4yEe-y9rNWeAQodg" identifier="error">
+        <errorType xmi:id="_QLQF1e4yEe-y9rNWeAQodg" signature="Ljava.lang.String;"/>
+      </boundaryEvents>
+      <outputBindings xmi:id="_QLQF1u4yEe-y9rNWeAQodg">
+        <source xmi:id="_QLQF1-4yEe-y9rNWeAQodg" language="xbase-1.0.0">
+          <source>self</source>
+        </source>
+        <target xsi:type="process:ProcessPropertyTarget" xmi:id="_QLQF2O4yEe-y9rNWeAQodg" property="_QLU-UO4yEe-y9rNWeAQodg"/>
+      </outputBindings>
+      <connector xmi:id="_Gi-8EAK4EfG2Qtu_66WDjA" connectorId="com.telus.connector.svcqualification.GetSvcQualification"/>
+      <parameterBindings xmi:id="_GkJZsAK4EfG2Qtu_66WDjA" parameterName="parameters">
+        <parameterType xmi:id="_GkJZsQK4EfG2Qtu_66WDjA" signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>
+        <expression xmi:id="_GkJZsgK4EfG2Qtu_66WDjA" language="xbase-1.0.0">
+          <source>request</source>
+          <resultType xmi:id="_GkJZswK4EfG2Qtu_66WDjA" signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>
+        </expression>
+      </parameterBindings>
+    </elements>
+    <elements xsi:type="process:EmptyEndEvent" xmi:id="_QLR7AO4yEe-y9rNWeAQodg" id="_7iOkYwK3EfG2Qtu_66WDjA" incomingConnections="_QLSiEO4yEe-y9rNWeAQodg"/>
+    <elements xsi:type="process:EmptyEndEvent" xmi:id="_QLR7Ae4yEe-y9rNWeAQodg" id="_7iOkZAK3EfG2Qtu_66WDjA" incomingConnections="_QLSiHe4yEe-y9rNWeAQodg"/>
+    <elements xsi:type="process:GenericTask" xmi:id="_QLR7Au4yEe-y9rNWeAQodg" id="_7iOkZQK3EfG2Qtu_66WDjA" name="Handle Error" incomingConnections="_QLSiF-4yEe-y9rNWeAQodg" outgoingConnections="_QLSiHe4yEe-y9rNWeAQodg">
+      <outputBindings xmi:id="_QLR7A-4yEe-y9rNWeAQodg">
+        <source xmi:id="_QLR7BO4yEe-y9rNWeAQodg" language="xbase-1.0.0">
+          <source>import com.telus.connector.svcqualification.api.datatypes.GetSvcQualificationDataRecord&#xD;
+import da.call.ConnectorErrorCallHandler&#xD;
+&#xD;
+return ConnectorErrorCallHandler.handleError(error, GetSvcQualificationDataRecord.create())&#xD;
+</source>
+        </source>
+        <target xsi:type="process:ProcessPropertyTarget" xmi:id="_QLR7Be4yEe-y9rNWeAQodg" property="_QLU-UO4yEe-y9rNWeAQodg"/>
+      </outputBindings>
+    </elements>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_QLR7Bu4yEe-y9rNWeAQodg" id="_7iOkZgK3EfG2Qtu_66WDjA" source="_QLQF0u4yEe-y9rNWeAQodg" target="_QLQF0-4yEe-y9rNWeAQodg"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_QLSiEO4yEe-y9rNWeAQodg" id="_7iOkZwK3EfG2Qtu_66WDjA" source="_QLQF0-4yEe-y9rNWeAQodg" target="_QLR7AO4yEe-y9rNWeAQodg"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_QLSiF-4yEe-y9rNWeAQodg" id="_7iOkaAK3EfG2Qtu_66WDjA" source="_QLQF1O4yEe-y9rNWeAQodg" target="_QLR7Au4yEe-y9rNWeAQodg"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_QLSiHe4yEe-y9rNWeAQodg" id="_7iOkaQK3EfG2Qtu_66WDjA" source="_QLR7Au4yEe-y9rNWeAQodg" target="_QLR7Ae4yEe-y9rNWeAQodg"/>
+    <properties xmi:id="_QLU-UO4yEe-y9rNWeAQodg" name="dataRecord" role="output">
+      <type xmi:id="_EhMqgAK4EfG2Qtu_66WDjA" signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationDataRecord;"/>
+      <defaultValue xmi:id="_QLU-Uu4yEe-y9rNWeAQodg" language="xbase-1.0.0"/>
+    </properties>
+    <properties xmi:id="_WVW3oO4yEe-y9rNWeAQodg" name="request" role="input">
+      <type xmi:id="_DFZa4AK4EfG2Qtu_66WDjA" signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>
+      <defaultValue xmi:id="_WVW3ou4yEe-y9rNWeAQodg" language="xbase-1.0.0"/>
+    </properties>
+  </process:ProcessDefinition>
+  <notation:Diagram xmi:id="_1QTb8u4pEe-rpqEWPjPNRg" type="Process" element="_1QTb8O4pEe-rpqEWPjPNRg" name="SyncCustomerTvSubscriptionsList" measurementUnit="Pixel">
+    <children xsi:type="notation:Shape" xmi:id="_QLPewO4yEe-y9rNWeAQodg" element="_QLQF0u4yEe-y9rNWeAQodg" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLPewe4yEe-y9rNWeAQodg" x="180" y="200" width="40" height="40"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_QLPewu4yEe-y9rNWeAQodg" element="_QLQF0-4yEe-y9rNWeAQodg" fontName="Segoe UI">
+      <children xsi:type="notation:Shape" xmi:id="_QLPew-4yEe-y9rNWeAQodg" element="_QLQF1O4yEe-y9rNWeAQodg" fontName="Segoe UI">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLPexO4yEe-y9rNWeAQodg"/>
+      </children>
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLPexe4yEe-y9rNWeAQodg" x="325" y="187" width="0" height="0"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_QLPexu4yEe-y9rNWeAQodg" element="_QLR7AO4yEe-y9rNWeAQodg" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLPex-4yEe-y9rNWeAQodg" x="641" y="200"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_QLPeyO4yEe-y9rNWeAQodg" element="_QLR7Ae4yEe-y9rNWeAQodg" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLPeye4yEe-y9rNWeAQodg" x="641" y="303"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_QLQF0O4yEe-y9rNWeAQodg" element="_QLR7Au4yEe-y9rNWeAQodg" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLQF0e4yEe-y9rNWeAQodg" x="325" y="290" width="108" height="66"/>
+    </children>
+    <styles xsi:type="notation:DiagramStyle" xmi:id="_1QTb8-4pEe-rpqEWPjPNRg"/>
+    <edges xmi:id="_QLR7B-4yEe-y9rNWeAQodg" element="_QLR7Bu4yEe-y9rNWeAQodg" source="_QLPewO4yEe-y9rNWeAQodg" target="_QLPewu4yEe-y9rNWeAQodg">
+      <children xsi:type="notation:DecorationNode" xmi:id="_QLR7CO4yEe-y9rNWeAQodg" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLR7Ce4yEe-y9rNWeAQodg" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_QLR7Cu4yEe-y9rNWeAQodg" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_QLR7C-4yEe-y9rNWeAQodg" points="[20, 0, -159, 0]$[179, -33, 0, -33]"/>
+    </edges>
+    <edges xmi:id="_QLSiEe4yEe-y9rNWeAQodg" element="_QLSiEO4yEe-y9rNWeAQodg" source="_QLPewu4yEe-y9rNWeAQodg" target="_QLPexu4yEe-y9rNWeAQodg">
+      <children xsi:type="notation:DecorationNode" xmi:id="_QLSiEu4yEe-y9rNWeAQodg" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLSiE-4yEe-y9rNWeAQodg" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_QLSiFO4yEe-y9rNWeAQodg" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_QLSiFe4yEe-y9rNWeAQodg" points="[54, 0, -228, 0]$[282, 20, 0, 20]"/>
+      <sourceAnchor xsi:type="notation:IdentityAnchor" xmi:id="_QLSiFu4yEe-y9rNWeAQodg" id="(1.0,0.0)"/>
+    </edges>
+    <edges xmi:id="_QLSiGO4yEe-y9rNWeAQodg" element="_QLSiF-4yEe-y9rNWeAQodg" source="_QLPew-4yEe-y9rNWeAQodg" target="_QLQF0O4yEe-y9rNWeAQodg">
+      <children xsi:type="notation:DecorationNode" xmi:id="_QLSiGe4yEe-y9rNWeAQodg" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLSiGu4yEe-y9rNWeAQodg" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_QLSiG-4yEe-y9rNWeAQodg" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_QLSiHO4yEe-y9rNWeAQodg" points="[12, 0, 12, -73]$[120, 13, 120, -60]"/>
+    </edges>
+    <edges xmi:id="_QLSiHu4yEe-y9rNWeAQodg" element="_QLSiHe4yEe-y9rNWeAQodg" source="_QLQF0O4yEe-y9rNWeAQodg" target="_QLPeyO4yEe-y9rNWeAQodg">
+      <children xsi:type="notation:DecorationNode" xmi:id="_QLSiH-4yEe-y9rNWeAQodg" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_QLSiIO4yEe-y9rNWeAQodg" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_QLSiIe4yEe-y9rNWeAQodg" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_QLSiIu4yEe-y9rNWeAQodg" points="[54, 0, -226, -24]$[280, 4, 0, -20]"/>
+      <sourceAnchor xsi:type="notation:IdentityAnchor" xmi:id="_QLSiI-4yEe-y9rNWeAQodg" id="(1.0,0.0)"/>
+    </edges>
+  </notation:Diagram>
+</xmi:XMI>

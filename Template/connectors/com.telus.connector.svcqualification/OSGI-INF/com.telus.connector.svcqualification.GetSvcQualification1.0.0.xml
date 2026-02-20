@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" immediate="true" name="com.telus.connector.svcqualification.GetSvcQualification1.0.0">
+   <property name="connectorId" value="com.telus.connector.svcqualification.GetSvcQualification"/>
+   <property name="version" value="1.0.0"/>
+   <property name="type" value="rest"/>
+   <service>
+      <provide interface="com.iisy.solvatio.connector.ConnectorFactory"/>
+   </service>
+   <reference bind="bindConfigurationComponent" interface="com.telus.connector.svcqualification.ISvcQualificationConfigurationComponent" name="ConfigurationComponent" target="(target=com.telus.connector.svcqualification.SvcQualification)" unbind="unbindConfigurationComponent"/>
+   <implementation class="com.telus.connector.svcqualification.factories.GetSvcQualificationFactory"/>
+</scr:component>

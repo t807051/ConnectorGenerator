@@ -1,0 +1,5 @@
+package qa.da.svcqualification
+
+issue QAIssueGetSvcQualification {
+	process qa.da.svcqualification.getsvcqualification.QAIssueGetSvcQualification
+}

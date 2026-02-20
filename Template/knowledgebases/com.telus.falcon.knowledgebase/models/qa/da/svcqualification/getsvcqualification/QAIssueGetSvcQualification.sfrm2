@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:expression="http://www.iisy.de/solvatio/forms/expression/9.0.0" xmlns:forms="http://www.iisy.de/solvatio/forms/9.0.0" xmlns:input="http://www.iisy.de/solvatio/forms/input/9.0.0" xmlns:layout="http://www.iisy.de/solvatio/forms/layout/9.0.0" xmlns:model="http://www.iisy.de/solvatio/forms/10.0.0" xmlns:output="http://www.iisy.de/solvatio/forms/output/9.0.0">
+  <model:Form>
+    <variants applicationId="_JXgFUPtpEeeZAe-uEFtiJg" content="/1"/>
+    <parameters name="lpdsId">
+      <type signature="Ljava.lang.String;"/>
+    </parameters>
+  </model:Form>
+  <forms:Form version="10.0">
+    <layout xsi:type="layout:VerticalLayout"/>
+    <elements xsi:type="forms:Container" id="_XwVmoAK9EfG2Qtu_66WDjA">
+      <layoutData xsi:type="layout:VerticalLayoutData" id="_XwWNsAK9EfG2Qtu_66WDjA">
+        <width value="100"/>
+      </layoutData>
+      <layout xsi:type="layout:VerticalLayout" id="_XwVmoQK9EfG2Qtu_66WDjA"/>
+      <elements xsi:type="output:Label" id="_YVuLoAK9EfG2Qtu_66WDjA">
+        <layoutData xsi:type="layout:VerticalLayoutData" id="_YVuLoQK9EfG2Qtu_66WDjA">
+          <width value="100"/>
+        </layoutData>
+        <value xsi:type="expression:LocalizedText" id="_ZrcocAK9EfG2Qtu_66WDjA" localizationKey="_ZrcocAK9EfG2Qtu_66WDjA">
+          <contents id="_ZrcocQK9EfG2Qtu_66WDjA" value="Lpds Id" locale="en_CA"/>
+        </value>
+      </elements>
+      <elements xsi:type="input:TextInput" id="_aehEIAK9EfG2Qtu_66WDjA">
+        <layoutData xsi:type="layout:VerticalLayoutData" id="_aehEIQK9EfG2Qtu_66WDjA">
+          <width value="100"/>
+        </layoutData>
+        <value reference="lpdsId" language="xbase-1.0.0"/>
+      </elements>
+    </elements>
+    <title xsi:type="expression:LocalizedText" id="_JkiPQAK9EfG2Qtu_66WDjA" localizationKey="_Jki2UAK9EfG2Qtu_66WDjA">
+      <contents id="_JkiPQQK9EfG2Qtu_66WDjA" value="Get Servcice Qualification" locale="en_CA"/>
+    </title>
+  </forms:Form>
+</xmi:XMI>

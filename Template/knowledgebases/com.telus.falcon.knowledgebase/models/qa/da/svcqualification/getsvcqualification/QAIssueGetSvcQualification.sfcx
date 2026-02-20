@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:notation="http://www.eclipse.org/gmf/runtime/1.0.2/notation" xmlns:process="http://www.iisy.de/solvatio/process/9.0.0">
+  <process:ProcessDefinition xmi:id="_mGbi0gTIEei6d4V2sgHH6w" id="_DwaJ8AK8EfG2Qtu_66WDjA" name="QAIssueGetSvcQualification" version="10.0" processType="ISSUE">
+    <elements xsi:type="process:EmptyStartEvent" xmi:id="_mGbi0wTIEei6d4V2sgHH6w" id="_DwaJ8QK8EfG2Qtu_66WDjA" outgoingConnections="_rTUecATIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:EmptyEndEvent" xmi:id="_q_MonwTIEei6d4V2sgHH6w" id="_DwaJ8gK8EfG2Qtu_66WDjA" incomingConnections="_q_MouwTIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:UserTask" xmi:id="_q_MooATIEei6d4V2sgHH6w" id="_DwaJ8wK8EfG2Qtu_66WDjA" name="Input" incomingConnections="_rTUecATIEei6d4V2sgHH6w" outgoingConnections="_q_Mo1ATIEei6d4V2sgHH6w" identifier="input">
+      <parameterBindings xmi:id="_woH_kAK9EfG2Qtu_66WDjA" parameterName="lpdsId">
+        <parameterType xmi:id="_woH_kQK9EfG2Qtu_66WDjA" signature="Ljava.lang.String;"/>
+        <expression xmi:id="_woH_kgK9EfG2Qtu_66WDjA" language="xbase-1.0.0">
+          <source>null</source>
+          <resultType xmi:id="_woH_kwK9EfG2Qtu_66WDjA" signature="Ljava.lang.String;"/>
+        </expression>
+      </parameterBindings>
+      <form xmi:id="_wnbcAAK9EfG2Qtu_66WDjA" formId="qa.da.svcqualification.getsvcqualification.QAIssueGetSvcQualification"/>
+    </elements>
+    <elements xsi:type="process:UserTask" xmi:id="_q_MopgTIEei6d4V2sgHH6w" id="_DwaJ9AK8EfG2Qtu_66WDjA" name="Result Visualisation" incomingConnections="_q_MoxwTIEei6d4V2sgHH6w" outgoingConnections="_q_MouwTIEei6d4V2sgHH6w">
+      <parameterBindings xmi:id="_q_MopwTIEei6d4V2sgHH6w" parameterName="response">
+        <parameterType xmi:id="_q_MoqATIEei6d4V2sgHH6w" signature="Ljava.lang.Object;"/>
+        <expression xmi:id="_q_MoqQTIEei6d4V2sgHH6w" language="xbase-1.0.0">
+          <source>response</source>
+          <resultType xmi:id="_q_MoqgTIEei6d4V2sgHH6w" signature="Ljava.lang.Object;"/>
+        </expression>
+      </parameterBindings>
+      <form xmi:id="_q_MoqwTIEei6d4V2sgHH6w" formId="qa.da.QAConnectorResponseVisualisation"/>
+    </elements>
+    <elements xsi:type="process:EmptyEndEvent" xmi:id="_q_MorATIEei6d4V2sgHH6w" id="_DwaJ9QK8EfG2Qtu_66WDjA" incomingConnections="_q_MowQTIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:UserTask" xmi:id="_q_MorQTIEei6d4V2sgHH6w" id="_DwaJ9gK8EfG2Qtu_66WDjA" name="Error Connector Call" incomingConnections="_q_MozgTIEei6d4V2sgHH6w" outgoingConnections="_q_MowQTIEei6d4V2sgHH6w">
+      <parameterBindings xmi:id="_q_MorgTIEei6d4V2sgHH6w" parameterName="errorMessage">
+        <parameterType xmi:id="_q_MorwTIEei6d4V2sgHH6w" signature="Ljava.lang.String;"/>
+        <expression xmi:id="_q_MosATIEei6d4V2sgHH6w" language="xbase-1.0.0">
+          <source>errorMessage</source>
+          <resultType xmi:id="_q_MosQTIEei6d4V2sgHH6w" signature="Ljava.lang.String;"/>
+        </expression>
+      </parameterBindings>
+      <form xmi:id="_q_MosgTIEei6d4V2sgHH6w" formId="qa.da.QAConnectorCallErrorVisualisation"/>
+    </elements>
+    <elements xsi:type="process:ConnectorTask" xmi:id="_q_MoswTIEei6d4V2sgHH6w" id="_DwaJ9wK8EfG2Qtu_66WDjA" name="StbDiagnosticsQuery" incomingConnections="_q_Mo1ATIEei6d4V2sgHH6w" outgoingConnections="_q_MoxwTIEei6d4V2sgHH6w" identifier="response">
+      <boundaryEvents xsi:type="process:ErrorBoundaryEvent" xmi:id="_q_MotATIEei6d4V2sgHH6w" id="_q_Mo3QTIEei6d4V2sgHH6w" outgoingConnections="_q_MozgTIEei6d4V2sgHH6w" identifier="errorMessage">
+        <errorType xmi:id="_q_MotQTIEei6d4V2sgHH6w" signature="Ljava.lang.String;"/>
+      </boundaryEvents>
+      <connector xmi:id="_qWaw8AK9EfG2Qtu_66WDjA" connectorId="com.telus.connector.svcqualification.GetSvcQualification"/>
+      <parameterBindings xmi:id="_qXbdkAK9EfG2Qtu_66WDjA" parameterName="parameters">
+        <parameterType xmi:id="_qXbdkQK9EfG2Qtu_66WDjA" signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>
+        <expression xmi:id="_qXbdkgK9EfG2Qtu_66WDjA" language="xbase-1.0.0">
+          <source>import com.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest&#xD;
+&#xD;
+return GetSvcQualificationRequest.create => [&#xD;
+	it.lpdsId = input.lpdsId&#xD;
+]</source>
+          <resultType xmi:id="_qXbdkwK9EfG2Qtu_66WDjA" signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>
+        </expression>
+      </parameterBindings>
+    </elements>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_q_MouwTIEei6d4V2sgHH6w" id="_DwaJ-AK8EfG2Qtu_66WDjA" source="_q_MopgTIEei6d4V2sgHH6w" target="_q_MonwTIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_q_MowQTIEei6d4V2sgHH6w" id="_DwaJ-QK8EfG2Qtu_66WDjA" source="_q_MorQTIEei6d4V2sgHH6w" target="_q_MorATIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_q_MoxwTIEei6d4V2sgHH6w" id="_DwaJ-gK8EfG2Qtu_66WDjA" source="_q_MoswTIEei6d4V2sgHH6w" target="_q_MopgTIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_q_MozgTIEei6d4V2sgHH6w" id="_DwaJ-wK8EfG2Qtu_66WDjA" source="_q_MotATIEei6d4V2sgHH6w" target="_q_MorQTIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_q_Mo1ATIEei6d4V2sgHH6w" id="_DwaJ_AK8EfG2Qtu_66WDjA" source="_q_MooATIEei6d4V2sgHH6w" target="_q_MoswTIEei6d4V2sgHH6w"/>
+    <elements xsi:type="process:SequenceFlow" xmi:id="_rTUecATIEei6d4V2sgHH6w" id="_DwaJ_QK8EfG2Qtu_66WDjA" source="_mGbi0wTIEei6d4V2sgHH6w" target="_q_MooATIEei6d4V2sgHH6w"/>
+    <properties xmi:id="_mGbi2QTIEei6d4V2sgHH6w" name="issue" role="input">
+      <type xmi:id="_5KSAUALdEfG2Qtu_66WDjA" signature="Lqa.da.svcqualification.QAIssueGetSvcQualification;"/>
+      <defaultValue xmi:id="_to2PYALbEfG2Qtu_66WDjA"/>
+    </properties>
+  </process:ProcessDefinition>
+  <notation:Diagram xmi:id="_mGbi1ATIEei6d4V2sgHH6w" type="Process" element="_mGbi0gTIEei6d4V2sgHH6w" name="QAIssueSTBDiagnosticQuery" measurementUnit="Pixel">
+    <children xsi:type="notation:Shape" xmi:id="_mGbi1gTIEei6d4V2sgHH6w" element="_mGbi0wTIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_mGbi2ATIEei6d4V2sgHH6w" x="50" y="150" width="40" height="40"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_q_MokQTIEei6d4V2sgHH6w" element="_q_MonwTIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MokgTIEei6d4V2sgHH6w" x="604" y="150"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_q_MokwTIEei6d4V2sgHH6w" element="_q_MooATIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MolATIEei6d4V2sgHH6w" x="120" y="137" width="0" height="0"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_q_MolQTIEei6d4V2sgHH6w" element="_q_MopgTIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MolgTIEei6d4V2sgHH6w" x="446" y="137" width="0" height="0"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_q_MolwTIEei6d4V2sgHH6w" element="_q_MorATIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MomATIEei6d4V2sgHH6w" x="604" y="235"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_q_MomQTIEei6d4V2sgHH6w" element="_q_MorQTIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MomgTIEei6d4V2sgHH6w" x="446" y="222" width="0" height="0"/>
+    </children>
+    <children xsi:type="notation:Shape" xmi:id="_q_MomwTIEei6d4V2sgHH6w" element="_q_MoswTIEei6d4V2sgHH6w" fontName="Segoe UI">
+      <children xsi:type="notation:Shape" xmi:id="_q_MonATIEei6d4V2sgHH6w" element="_q_MotATIEei6d4V2sgHH6w" fontName="Segoe UI">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MonQTIEei6d4V2sgHH6w"/>
+      </children>
+      <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MongTIEei6d4V2sgHH6w" x="278" y="137" width="0" height="0"/>
+    </children>
+    <styles xsi:type="notation:DiagramStyle" xmi:id="_mGbi1QTIEei6d4V2sgHH6w"/>
+    <edges xmi:id="_q_MovATIEei6d4V2sgHH6w" element="_q_MouwTIEei6d4V2sgHH6w" source="_q_MolQTIEei6d4V2sgHH6w" target="_q_MokQTIEei6d4V2sgHH6w">
+      <children xsi:type="notation:DecorationNode" xmi:id="_q_MovQTIEei6d4V2sgHH6w" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MovgTIEei6d4V2sgHH6w" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_q_MovwTIEei6d4V2sgHH6w" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_q_MowATIEei6d4V2sgHH6w" points="[0, 0, 0, 0]$[0, 0, 0, 0]"/>
+    </edges>
+    <edges xmi:id="_q_MowgTIEei6d4V2sgHH6w" element="_q_MowQTIEei6d4V2sgHH6w" source="_q_MomQTIEei6d4V2sgHH6w" target="_q_MolwTIEei6d4V2sgHH6w">
+      <children xsi:type="notation:DecorationNode" xmi:id="_q_MowwTIEei6d4V2sgHH6w" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MoxATIEei6d4V2sgHH6w" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_q_MoxQTIEei6d4V2sgHH6w" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_q_MoxgTIEei6d4V2sgHH6w" points="[0, 0, 0, 0]$[0, 0, 0, 0]"/>
+    </edges>
+    <edges xmi:id="_q_MoyATIEei6d4V2sgHH6w" element="_q_MoxwTIEei6d4V2sgHH6w" source="_q_MomwTIEei6d4V2sgHH6w" target="_q_MolQTIEei6d4V2sgHH6w">
+      <children xsi:type="notation:DecorationNode" xmi:id="_q_MoyQTIEei6d4V2sgHH6w" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_MoygTIEei6d4V2sgHH6w" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_q_MoywTIEei6d4V2sgHH6w" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_q_MozATIEei6d4V2sgHH6w" points="[54, 0, -114, 0]$[384, -33, 216, -33]"/>
+      <sourceAnchor xsi:type="notation:IdentityAnchor" xmi:id="_q_MozQTIEei6d4V2sgHH6w" id="(1.0,0.10606060606060606)"/>
+    </edges>
+    <edges xmi:id="_q_MozwTIEei6d4V2sgHH6w" element="_q_MozgTIEei6d4V2sgHH6w" source="_q_MonATIEei6d4V2sgHH6w" target="_q_MomQTIEei6d4V2sgHH6w">
+      <children xsi:type="notation:DecorationNode" xmi:id="_q_Mo0ATIEei6d4V2sgHH6w" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_Mo0QTIEei6d4V2sgHH6w" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_q_Mo0gTIEei6d4V2sgHH6w" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_q_Mo0wTIEei6d4V2sgHH6w" points="[0, 12, -168, -43]$[0, 55, -168, 0]$[114, 55, -54, 0]"/>
+    </edges>
+    <edges xmi:id="_q_Mo1QTIEei6d4V2sgHH6w" element="_q_Mo1ATIEei6d4V2sgHH6w" source="_q_MokwTIEei6d4V2sgHH6w" target="_q_MomwTIEei6d4V2sgHH6w">
+      <children xsi:type="notation:DecorationNode" xmi:id="_q_Mo1gTIEei6d4V2sgHH6w" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_q_Mo1wTIEei6d4V2sgHH6w" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_q_Mo2ATIEei6d4V2sgHH6w" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_q_Mo2QTIEei6d4V2sgHH6w" points="[54, 0, -104, 0]$[348, -33, 190, -33]"/>
+      <sourceAnchor xsi:type="notation:IdentityAnchor" xmi:id="_q_Mo2gTIEei6d4V2sgHH6w" id="(1.0,0.13636363636363635)"/>
+    </edges>
+    <edges xmi:id="_rTUecgTIEei6d4V2sgHH6w" element="_rTUecATIEei6d4V2sgHH6w" source="_mGbi1gTIEei6d4V2sgHH6w" target="_q_MokwTIEei6d4V2sgHH6w">
+      <children xsi:type="notation:DecorationNode" xmi:id="_rTUedQTIEei6d4V2sgHH6w" type="_sequenceFlowName">
+        <layoutConstraint xsi:type="notation:Bounds" xmi:id="_rTUedgTIEei6d4V2sgHH6w" y="-10"/>
+      </children>
+      <styles xsi:type="notation:ConnectorStyle" xmi:id="_rTUecwTIEei6d4V2sgHH6w" roundedBendpointsRadius="8" routing="Rectilinear" lineColor="4210752"/>
+      <bendpoints xsi:type="notation:RelativeBendpoints" xmi:id="_rTUedATIEei6d4V2sgHH6w" points="[20, 0, -84, 0]$[104, -33, 0, -33]"/>
+    </edges>
+  </notation:Diagram>
+</xmi:XMI>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solvatio>
+
+	<service serviceId="com.telus.connector.cloudcheck.tmf.rest">
+		<property name="endpoint" value="https://my-server:443"/>
+		<property name="username" value="aUser"/>
+		<property name="password" type="password" value="nZVDs0BPk/pJw88vMgMyQXXNblVIwhpw"/>
+		<property name="authenticationType" value="basic"/>
+		<property name="timeout" type="long" value="30000"/>
+	</service>
+
+</solvatio>

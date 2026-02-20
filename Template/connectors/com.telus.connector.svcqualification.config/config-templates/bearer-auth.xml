@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solvatio>
+
+	<service serviceId="com.telus.connector.cloudcheck.tmf.rest">
+	    <property name="endpoint" value="https://my-server:443"/>
+	    <property name="bearerToken" value="1223456-tzioenwb-09876-erettr"/>
+	    <property name="authenticationType" value="bearer"/>
+	    <property name="timeout" type="long" value="30000"/>
+	</service>
+
+</solvatio>

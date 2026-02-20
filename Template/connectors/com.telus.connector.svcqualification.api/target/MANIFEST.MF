@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.telus.connector.svcqualification.api Connector API
+Bundle-SymbolicName: com.telus.connector.svcqualification.api
+Bundle-Version: 1.0.0
+Bundle-ClassPath: .
+Bundle-Vendor: solvatio AG
+Export-Package: com.telus.connector.svcqualification.api.datatypes;versi
+ on="1.0.0",com.telus.connector.svcqualification.api.datatypes.impl
+Require-Bundle: com.fasterxml.jackson.core.jackson-databind;bundle-versi
+ on="2.14.2",com.iisy.solvatio.domain.model;bundle-version="1.0.0";visib
+ ility:=reexport,org.eclipse.xtend.lib;bundle-version="2.25.0",com.telus
+ .common.api.v1;bundle-version="[1.0.1,10.0.0)"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+

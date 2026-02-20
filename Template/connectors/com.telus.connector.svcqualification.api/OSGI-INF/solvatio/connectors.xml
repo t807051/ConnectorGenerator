@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<connectors>
+ 	<connector
+			version="1.0.0"
+			name="GetSvcQualification"
+			description=""
+			id="com.telus.connector.svcqualification.GetSvcQualification">
+		<input
+				name="parameters"
+				class="com.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest">
+		</input>
+		<output
+				class="com.telus.connector.svcqualification.api.datatypes.GetSvcQualificationDataRecord">
+		</output>
+	</connector>
+</connectors>
