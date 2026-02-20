@@ -1,0 +1,2 @@
+# ConnectorGenerator
+Insight Connector Generator
