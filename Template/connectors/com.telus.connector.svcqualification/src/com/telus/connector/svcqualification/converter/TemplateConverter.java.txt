@@ -1,0 +1,112 @@
+package com.telus.connector.<projectname>.converter;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.solvatio.connector.rest.common.domaininterface.conversion.ConversionException;
+import com.solvatio.connector.rest.common.domaininterface.conversion.Converter;
+import com.telus.connector.<projectname>..model.*;
+
+public class <connectorid>Converter implements Converter<JsonNode, <connectorid>Entity>{
+	private final ObjectMapper mapper;
+	
+	public <connectorid>Converter() {
+		this.mapper = new ObjectMapper();
+    }
+	
+	/**
+	* Convert a JSON document to a <connectorid>Entity
+    * @param input the JSON document to convert
+    * @return the converted <connectorid>Entity
+    * @throws <connectorid>ConversionException if the conversion fails
+    */
+	@Override
+	public <connectorid>Entity convert(JsonNode input) throws ConversionException {
+		<connectorid>Entity rv = null;
+		if (input == null) 
+			return rv;
+
+		try {
+			<responseExample>Pojo pojo = mapper.treeToValue(input, <responseExample>Pojo.class);
+			rv = to<connectorid>Entity(pojo);
+		} catch (Exception e) {
+			<connectorid>ConversionException ex = new <connectorid>ConversionException(e.getMessage()); 
+			throw ex;
+		}
+		
+		return rv;
+	}
+
+    /**
+        * Convert a <responseExample>Pojo to a <connectorid>Entity
+        * @param pojo the <responseExample>Pojo to convert
+        * @return the converted <connectorid>Entity
+        */
+	private <connectorid>Entity to<connectorid>Entity(<responseExample>Pojo pojo) {
+	    if (pojo == null)
+            return null;
+        <connectorid>Entity rv = <connectorid>Entity.create();
+
+	    // TODO: implement the conversion logic here
+
+        return rv;
+	}
+
+    /**
+        * Convert a <connectorid>Request to a <requestExample>Pojo
+        * Implement this method only if <requestExample>Pojo exists.
+        * @param request the <connectorid>Request to convert
+        * @return the converted <requestExample>Pojo
+        */
+	private <requestExample>Pojo to<connectorid>Pojo(<connectorid>Request request) {
+	    if (request == null)
+            return null;
+        <requestExample>Pojo rv = new <requestExample>Pojo();
+
+        // TODO: implement the conversion logic here
+
+        return rv;
+	}
+
+
+	/**
+	 * Return a safe iterable. If the input iterable is null, this method returns an empty iterable instead.
+	 * This is useful to avoid null pointer exceptions when iterating over collections that may be null.
+	 */
+	private static <T> Iterable<T> safe(Iterable<T> iterable) {
+		return iterable == null ? Collections.<T>emptyList() : iterable;
+	}
+
+    /**
+     * Parse a date string. Use when JSON response contains a date that needs to be converted to a Date object.
+     * If the date string is null, empty, or cannot be parsed, this method returns null.
+     * @param date the date string to parse
+     * @return the parsed Date object, or null if the date string is null, empty, or cannot be parsed
+     */
+    public static Date parseDateFormat(String date){
+    	String CUSTOM_FORMAT = "MMM dd, yyyy, h:mm:ss a"; // Edit this to match the date format in the JSON response
+
+    	if (date != null && date != ""){
+    		try {
+    			Locale locale = Locale.CANADA;
+				SimpleDateFormat format = new SimpleDateFormat(DATE_FORMAT, locale);
+    			Date parsedDate = format.parse(date);
+    			
+    			return parsedDate;
+    		}   catch(Exception e) {
+    			return null; //any failure
+    		}
+    	}
+    	return null;
+    }
+
+
+}

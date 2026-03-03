@@ -1,0 +1,69 @@
+package com.telus.connector.<projectname>.factories;
+
+import javax.ws.rs.Priorities;
+import javax.ws.rs.client.WebTarget;
+
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iisy.solvatio.connector.ConnectorException;
+import com.iisy.solvatio.connector.ConnectorFactory;
+import com.solvatio.connector.rest.common.connector.AsyncRestConnectorFactory;
+import com.solvatio.connector.rest.common.domaininterface.json.io.JsonToDomainReader;
+import com.solvatio.connector.rest.common.logging.SLF4JRequestFilter;
+import com.solvatio.connector.rest.common.logging.SLF4JResponseFilter;
+import com.telus.connector.<projectname>.Constants;
+import com.telus.connector.<projectname>.I<connectorid>ConfigurationComponent;
+import com.telus.connector.<projectname>.api.datatypes.<connectorid>Entity;
+import com.telus.connector.<projectname>.call.<connectorid>Connector;
+import com.telus.connector.<projectname>.converter.<connectorid>Converter;
+
+@Component(service = ConnectorFactory.class, name = "com.telus.connector.<projectname>.<connectorid>"
+		+ Constants.VERSION, property = {"connectorId=com.telus.connector.<projectname>.<connectorid>",
+				"version=" + Constants.VERSION, "type=rest" }, immediate = true)
+public class <connectorid>Factory extends AsyncRestConnectorFactory<<connectorid>Connector> {
+
+	public static final String PATH = "<apiPath>";
+	private WebTarget webTarget;
+	public String targetEnv;
+
+	@Override
+	public <connectorid>Connector createConnector() throws ConnectorException {
+		String caseId = MDC.get("caseId");
+		String correlationId = MDC.get("correlationId");
+		String configuredUri = null;
+		try {
+			configuredUri = this.webTarget.getUri().toString();
+		} catch (Exception e) {
+		}
+		WebTarget webTargetWithLogging = this.webTarget.path("")
+				.register(new SLF4JRequestFilter(caseId, correlationId, configuredUri,
+						<connectorid>Connector.class), Priorities.USER)
+				.register(new SLF4JResponseFilter(caseId, correlationId, <connectorid>Connector.class),
+						Priorities.USER);
+		<connectorid>Connector connector = new <connectorid>Connector(webTargetWithLogging);
+		connector.targetEnv = this.targetEnv;
+		return connector;
+	}
+
+	@Reference(target = "(target=com.telus.connector.<projectname>.<connectorid>)")
+	public void bindConfigurationComponent(final I<connectorid>ConfigurationComponent component) {
+		this.configuration = component;
+		this.webTarget = component.getWebTarget().path(PATH);
+		Logger logger = LoggerFactory.getLogger(<connectorid>Connector.QUALIFIED_ID);
+		ObjectMapper objectMapper = new ObjectMapper();
+		final JsonToDomainReader<<connectorid>Entity> jsonToDomainReader = new JsonToDomainReader<>(
+				new <connectorid>Converter(), objectMapper, logger);
+		this.webTarget = webTarget.register(jsonToDomainReader);
+		this.targetEnv = component.getTargetEnv();
+	}
+
+	public void unbindConfigurationComponent(final I<connectorid>ConfigurationComponent component) {
+		this.configuration = null;
+	}
+
+}

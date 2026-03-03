@@ -1,0 +1,580 @@
+================================================================================
+Requirements for Insight Connector Project Generator
+================================================================================
+
+--------------------------------------------------------------------------------
+1. CONNECTOR PROJECT DEFINITION
+--------------------------------------------------------------------------------
+
+Connector Projects are defined in a JSON file. Each JSON file contains the
+definition of ONE connector project. A connector project consists of one or
+more connectors. JSON file structure:
+
+{
+  "projectname": "<projectname>",
+  "connectors": [
+    {
+      "connectorid":       "<connectorid>",
+      "inputClass":        "<inputClass>",
+      "entityClass":       "<entityClass>",
+      "dataRecordClass":   "<dataRecordClass>",
+      "apiPath":           "<apiPath>",
+      "httpMethod":        "<httpMethod>",
+      "requestExample":    "<requestExampleFilename>",
+      "responseExample":   "<responseExampleFilename>"
+    }
+  ]
+}
+
+Field rules:
+  - <projectname>    : Either <sourceSystem> or <sourceSystem>.tmf
+                       Always lowercase. e.g. "inventory" or "inventory.tmf"
+  - <connectorid>    : Unique identifier for each connector within the project.
+                       Used to drive all generated file and class names.
+  - <inputClass>     : Name of the input/request class for this connector.
+  - <entityClass>    : Name of the entity class for this connector.
+  - <dataRecordClass>: Name of the data record class for this connector.
+  - <apiPath>        : REST API endpoint path. e.g. "/inventory/v1/items/{id}"
+  - <httpMethod>     : HTTP method. e.g. GET, POST, PUT, PATCH, DELETE
+  - <requestExampleFilename>  : Filename of the request example JSON file,
+                                located in the same directory as the definition
+                                file. Used to generate IDL fields for
+                                <connectorid>Request and the request POJO class.
+                                Optional — omit or set null if not applicable.
+  - <responseExampleFilename> : Filename of the response example JSON file,
+                                located in the same directory as the definition
+                                file. Used to generate IDL fields for
+                                <connectorid>Entity and the response POJO class.
+                                Optional — omit or set null if not applicable.
+
+Validation rules:
+  - JSON file must exist and must not be empty.
+  - File must be valid JSON (UTF-8, BOM-safe).
+  - "projectname" field is required.
+  - "connectors" field is required and must be a non-empty list.
+  - Each connector entry must contain all six core fields:
+    connectorid, inputClass, entityClass, dataRecordClass, apiPath, httpMethod.
+  - requestExample and responseExample are optional fields (read via .get()).
+
+--------------------------------------------------------------------------------
+2. DIRECTORY CONSTANTS
+--------------------------------------------------------------------------------
+
+BASEDIR          = C:\TEMP                            ← active (C:\github\... commented out)
+CONNECTORDIR     = $BASEDIR\connectors
+BUILDDIR         = $BASEDIR\build
+KBDIR            = $BASEDIR\knowledgebases\com.telus.falcon.knowledgebase
+MODELDIR         = $KBDIR\model
+CALLDIR          = $MODELDIR\da\call
+QADIR            = $MODELDIR\qa\da
+
+TEMPLATEDIR          = C:\cb\Insight10.8\Template
+TEMPLATECONNECTORDIR = $TEMPLATEDIR\connectors
+TEMPLATEBUILDDIR     = $TEMPLATEDIR\build
+TEMPLATEKBCALLDIR    = $TEMPLATEDIR\knowledgebases\com.telus.falcon.knowledgebase\models\da\call
+TEMPLDATEKBQADIR     = $TEMPLATEDIR\knowledgebases\com.telus.falcon.knowledgebase\models\qa\da
+
+TEMPLATE_NAME    = "svcqualification"   (the template placeholder project name)
+
+TEMPLATE_CONNECTOR_JAVA =
+  $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification\
+    src\com\telus\connector\svcqualification\call\TemplateConnector.java.txt
+
+TEMPLATE_FACTORY_JAVA =
+  $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification\
+    src\com\telus\connector\svcqualification\factories\TemplateFactory.java.txt
+
+TEMPLATE_EXCEPTION_JAVA =
+  $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification\
+    src\com\telus\connector\svcqualification\exception\TemplateException.java.txt
+
+TEMPLATE_CONVERTER_JAVA =
+  $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification\
+    src\com\telus\connector\svcqualification\converter\TemplateConverter.java.txt
+
+--------------------------------------------------------------------------------
+3. SCRIPT REQUIREMENTS
+--------------------------------------------------------------------------------
+
+- Script written in Python (standard library only — no third-party packages).
+- Script reads connector definition from a JSON file passed as a command-line
+  argument. Usage: python main.py <definition.json>
+- Script creates a connector project by:
+    a) Copying template directories to target locations.
+    b) Editing copied files with data from the connector definition.
+    c) Generating new files per connector based on defined templates.
+
+Python standard library modules used:
+  - os                     (path manipulation, file/directory operations)
+  - json                   (JSON parsing)
+  - shutil                 (recursive directory copy)
+  - sys                    (command-line arguments, exit)
+  - re                     (regex for ConnectorGenerator conditional block
+                            parsing and date string detection)
+  - xml.etree.ElementTree  (XML element building for connectors.xml)
+  - xml.dom.minidom        (XML pretty-printing for connectors.xml)
+
+--------------------------------------------------------------------------------
+4. NAMING CONVENTION: src DIRECTORY PATHS
+--------------------------------------------------------------------------------
+
+When constructing src\ directory paths, any dots (.) in <projectname> must be
+replaced with path separators (\). e.g. projectname "inventory.tmf"
+       → src\com\telus\connector\inventory\tmf\
+
+This applies to:
+  - src package paths in the config project
+  - src package paths in the api project
+  - src package paths in the implementation project
+
+Directory/project folder names and Java package declarations retain dots as-is.
+
+NOTE: The datatypes directory in the API project is an exception — it uses a
+flat folder name with dots retained directly under src\:
+  src\com.telus.connector.<projectname>.api.datatypes\
+
+--------------------------------------------------------------------------------
+5. STEP 1 — COPY TEMPLATE DIRECTORIES
+--------------------------------------------------------------------------------
+
+Copy the following template directories recursively to their target locations,
+replacing "svcqualification" with <projectname> in directory names:
+
+  Connector directories:
+    $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification
+      → $CONNECTORDIR\com.telus.connector.<projectname>
+
+    $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.api
+      → $CONNECTORDIR\com.telus.connector.<projectname>.api
+
+    $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.config
+      → $CONNECTORDIR\com.telus.connector.<projectname>.config
+
+  Build directories:
+    $TEMPLATEBUILDDIR\com.telus.connector.svcqualification.api.esa
+      → $BUILDDIR\com.telus.connector.<projectname>.api.esa
+
+    $TEMPLATEBUILDDIR\com.telus.connector.svcqualification.build
+      → $BUILDDIR\com.telus.connector.<projectname>.build
+
+    $TEMPLATEBUILDDIR\com.telus.connector.svcqualification.config.esa
+      → $BUILDDIR\com.telus.connector.<projectname>.config.esa
+
+    $TEMPLATEBUILDDIR\com.telus.connector.svcqualification.esa
+      → $BUILDDIR\com.telus.connector.<projectname>.esa
+
+    $TEMPLATEBUILDDIR\com.telus.connector.svcqualification.feature
+      → $BUILDDIR\com.telus.connector.<projectname>.feature
+
+    $TEMPLATEBUILDDIR\com.telus.connector.svcqualification.p2
+      → $BUILDDIR\com.telus.connector.<projectname>.p2
+
+  Knowledge Base directories:
+    $TEMPLATEKBCALLDIR\svcqualification
+      → $CALLDIR\<projectname>
+
+    $TEMPLDATEKBQADIR\svcqualification
+      → $QADIR\<projectname>
+
+--------------------------------------------------------------------------------
+6. STEP 2 — EDIT CONFIG PROJECT FILES
+--------------------------------------------------------------------------------
+
+Project: $CONNECTORDIR\com.telus.connector.<projectname>.config
+
+  .project
+    Replace "svcQualification" with <projectname>
+
+  pom.xml
+    Replace "svcQualification" with <projectname>
+
+--------------------------------------------------------------------------------
+7. STEP 3 — EDIT API PROJECT FILES
+--------------------------------------------------------------------------------
+
+Project: $CONNECTORDIR\com.telus.connector.<projectname>.api
+
+  .project
+    Replace "svcqualification" with <projectname>
+
+  pom.xml
+    Replace "svcqualification" with <projectname>
+
+  META-INF\MANIFEST.MF
+    Replace "svcqualification" with <projectname>
+
+  src\ package folder rename:
+    src\com\telus\connector\svcqualification\api
+      → src\com\telus\connector\<projectname with dots as \>\api
+    e.g. src\com\telus\connector\inventory\tmf\api
+    Note: Create the new parent directory before renaming.
+
+--------------------------------------------------------------------------------
+8. STEP 4 — EDIT IMPLEMENTATION PROJECT FILES
+--------------------------------------------------------------------------------
+
+Project: $CONNECTORDIR\com.telus.connector.<projectname>
+
+  .project
+    Replace "svcqualification" with <projectname>
+
+  pom.xml
+    Replace "svcqualification" with <projectname>
+
+  META-INF\MANIFEST.MF
+    Replace "svcqualification" with <projectname>
+
+  src\ package folder rename:
+    src\com\telus\connector\svcqualification
+      → src\com\telus\connector\<projectname with dots as \>
+    e.g. src\com\telus\connector\inventory\tmf
+    Note: Create the new parent directory before renaming.
+
+--------------------------------------------------------------------------------
+9. STEP 5 — GENERATE CONFIG FILES PER CONNECTOR
+--------------------------------------------------------------------------------
+
+For each <connectorid> in the connector list:
+
+  A) Generate OSGI-INF\com.telus.connector.<projectname>.<connectorid>.xml
+
+     Based on template: com.telus.connector.projectname.connectorid.xml.txt
+
+     <?xml version="1.0" encoding="UTF-8"?>
+     <scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.2.0"
+         activate="configure"
+         configuration-pid="com.telus.connector.<projectname>.<connectorid>.rest"
+         configuration-policy="require"
+         immediate="true"
+         name="com.telus.connector.<projectname>.<connectorid>">
+       <property name="target"
+                 value="com.telus.connector.<projectname>.SvcQualification"/>
+       <implementation
+                 class="com.telus.connector.<projectname>.<connectorid>ConfigurationComponent"/>
+       <service>
+         <provide
+                 interface="com.telus.connector.<projectname>.I<connectorid>ConfigurationComponent"/>
+       </service>
+     </scr:component>
+
+     Token replacements:
+       <projectname>  → projectname from JSON
+       <connectorid>  → connectorid from JSON
+     Note: "SvcQualification" in the <property> target value is a fixed literal.
+
+  B) Generate src\com\telus\connector\<projectname>\I<connectorid>ConfigurationComponent.java
+     (stub Java interface)
+
+  C) Generate src\com\telus\connector\<projectname>\<connectorid>ConfigurationComponent.java
+     (stub Java implementation class)
+
+  D) Update META-INF\MANIFEST.MF
+     Append all generated OSGI-INF filenames to the Service-Component entry.
+
+--------------------------------------------------------------------------------
+10. STEP 6 — GENERATE API FILES PER CONNECTOR
+--------------------------------------------------------------------------------
+
+For each connector, generate two outputs in the API project:
+
+  A) OSGI-INF\solvatio\connectors.xml
+     Built from scratch with one <connector> block per connector definition.
+     Based on template: connectors.xml.txt
+
+     <?xml version="1.0" encoding="UTF-8"?>
+     <connectors>
+         <connector
+                 version="1.0.0"
+                 name="<connectorid>"
+                 description=""
+                 id="com.telus.connector.<projectname>.<connectorid>">
+             <input
+                     name="parameters"
+                     class="com.telus.connector.<projectname>.api.datatypes.<inputClass>">
+             </input>
+             <output
+                     class="com.telus.connector.<projectname>.api.datatypes.<dataRecordClass>">
+             </output>
+         </connector>
+         ... (one block per connector)
+     </connectors>
+
+     Token replacements per connector:
+       <connectorid>     → connectorid from JSON
+       <projectname>     → projectname from JSON
+       <inputClass>      → inputClass from JSON
+       <dataRecordClass> → dataRecordClass from JSON
+
+     Note: XML is built programmatically using xml.etree.ElementTree and
+     pretty-printed with xml.dom.minidom. The minidom-generated XML declaration
+     is replaced with: <?xml version="1.0" encoding="UTF-8"?>
+     Blank lines are stripped from the output.
+
+  B) src\com.telus.connector.<projectname>.api.datatypes\<connectorid>Types.model
+     (IDL file — flat folder name with dots retained, directly under src\)
+
+     Generated by _write_types_idl(). Structure:
+
+       package com.telus.connector.<projectname>.api.datatypes
+
+       import com.telus.common.api.datatypes.AbstractDataRecord
+
+       struct <connectorid>Request {
+           <IDL fields derived from requestExample JSON>
+       }
+
+       struct <connectorid>Entity {
+           <IDL fields derived from responseExample JSON>
+       }
+
+       struct <connectorid>DataRecord : AbstractDataRecord {
+           <connectorid>Entity entity
+       }
+
+     IDL field generation rules (_json_to_idl_fields):
+       - If the root JSON value is a list, the first element (if a dict) is
+         used for field inference.
+       - JSON object keys become IDL field declarations.
+       - Nested objects (dict values) become inline struct definitions:
+           struct <Key> { ... }
+           <Key> <key>
+         (struct name = key.capitalize())
+       - Arrays of objects use _infer_fields_from_list() — ALL elements are
+         scanned to find the best non-null value per field (not just the first).
+         Fields null across all elements get a TODO comment.
+         Struct naming uses _singularize(key).capitalize():
+           struct <SingularName> { ... }
+           list of <SingularName> <key>
+       - Primitive fields use _json_value_to_idl_type(), which returns a
+         tuple (idl_type, comment). If comment is non-empty it is appended
+         inline: <type> <key>  <comment>
+
+     _singularize(name) rules:
+       - ends with "ies"          → replace with "y"   (e.g. categories → category)
+       - ends with "sses","xes",
+         "ches","shes"            → strip last 2 chars  (e.g. addresses → address)
+       - ends with "s" (not "ss") → strip last char     (e.g. outages → outage)
+       - otherwise                → unchanged
+
+     _is_date_string(value) — returns True if the string matches a date/datetime
+     pattern (checked via regex, case-insensitive). Used to map string values
+     to the "date" IDL type instead of "string".
+
+     _json_value_to_idl_type(key, value, indent) — returns (type, comment):
+       bool              → ("boolean", "")
+       int               → ("long", "")
+       float             → ("double", "")
+       str (date-like)   → ("date", "")
+       str (other)       → ("string", "")
+       None/null         → ("string", "// TODO: verify data type - null in sample")
+       list (empty)      → ("list of string",
+                            "// TODO: verify data type - empty array in sample")
+       list of bool      → ("list of boolean", "")
+       list of int       → ("list of long", "")
+       list of float     → ("list of double", "")
+       list of str (date)→ ("list of date", "")
+       list of str       → ("list of string", "")
+       list (other)      → ("list of string",
+                            "// TODO: verify data type - empty array in sample")
+       other             → ("string", "")
+
+     _infer_fields_from_list(items, indent) — for list-of-object fields:
+       - Collects all keys from the first element.
+       - For each key, finds the first non-null value across ALL elements
+         (_first_non_null_value).
+       - If all values are null: emits
+         string <key>  // TODO: verify data type - all values null in sample
+       - Otherwise applies the same struct/list-of-struct/primitive logic
+         as _json_to_idl_fields().
+
+     requestExample / responseExample handling:
+       - Filenames are read from the connector's "requestExample" /
+         "responseExample" fields (optional — read via .get()).
+       - Files are expected to be co-located with the definition JSON file.
+       - If a filename is provided but the file is missing or empty, a [WARN]
+         is printed and the corresponding IDL struct body is left empty.
+       - If a file cannot be parsed, a [WARN] is printed and the body is
+         left empty.
+       - If the field is absent/null, the IDL struct body is left empty.
+       definition_file path is passed into generate_api_per_connector() so that
+       example files can be resolved relative to the definition directory.
+
+--------------------------------------------------------------------------------
+11. STEP 7 — GENERATE IMPLEMENTATION FILES PER CONNECTOR
+--------------------------------------------------------------------------------
+
+For each <connectorid>, generate the following files under:
+  $CONNECTORDIR\com.telus.connector.<projectname>\src\com\telus\connector\<projectname>\
+
+  call\<connectorid>Connector.java
+    Generated from TemplateConnector.java.txt (TEMPLATE_CONNECTOR_JAVA).
+    Processing steps:
+      1. Read the template file (UTF-8, BOM-safe).
+      2. Process ConnectorGenerator conditional blocks based on httpMethod,
+         keeping only the lines matching the given httpMethod and discarding others.
+      3. Apply token replacements:
+           <projectname>  → projectname
+           <connectorid>  → connectorid
+      4. Write the output file (UTF-8).
+
+    Conditional block syntax in template:
+      // ConnectorGenerator: if <httpMethod> == GET
+          ... GET-specific code ...
+      // ConnectorGenerator: else if <httpMethod> == POST
+          ... POST-specific code ...
+      // ConnectorGenerator: else if <httpMethod> == PATCH
+          ... PATCH-specific code ...
+      // ConnectorGenerator: end if
+
+    Rules:
+      - Only the branch whose method matches httpMethod (case-insensitive) is emitted.
+      - Once a branch is matched, subsequent else-if branches are suppressed.
+      - Directive lines themselves are never emitted.
+      - Lines outside any conditional block are always emitted.
+
+  model\<requestStem>Pojo.java
+    Generated by _write_pojo_java() if requestExample is provided.
+    <requestStem> = filename stem of requestExample (e.g. "myRequest" from "myRequest.json").
+
+  model\<responseStem>Pojo.java
+    Generated by _write_pojo_java() if responseExample is provided.
+    <responseStem> = filename stem of responseExample.
+
+    POJO generation rules (_write_pojo_java / _json_to_pojo_fields):
+      - Reads the JSON example file (UTF-8, BOM-safe).
+      - If the root JSON value is a list, the first element (if a dict) is used.
+      - For each top-level key/value pair, generates a private field + getter + setter.
+      - Recursively generates separate <ClassName>Pojo.java files for:
+          dict values     → class name = key.capitalize() + "Pojo"
+                            field type = key.capitalize()  (e.g. Meta)
+          list of objects → class name = _singularize(key).capitalize() + "Pojo"
+                            field type = List<_singularize(key).capitalize()>
+                            (e.g. List<Outage>)
+                            All list elements are merged to get the full field set
+                            (best non-null value per key across all elements).
+      - Nested POJO files are written to the same model\ directory.
+      - Import statements are auto-generated based on field types used:
+          Date fields       → import java.util.Date;
+          List fields       → import java.util.List;
+          Nested POJO types → import com.telus.connector.<projectname>.model.<NestedClass>Pojo;
+      - If the file is missing, empty, or unparseable, a stub class is written
+        with a // TODO: add fields comment and a [WARN] is printed.
+
+    Java type mapping (_json_to_pojo_fields):
+      bool              → boolean
+      int               → long
+      float             → double
+      str (date-like)   → Date
+      str (other)       → String
+      None              → String  (with // TODO: verify data type comment)
+      list of objects   → List<SingularClassName>  (generates SingularClassNamePojo.java)
+      list (empty)      → List<String>  (with // TODO: verify data type comment)
+      list of bool      → List<Boolean>
+      list of int       → List<Long>
+      list of float     → List<Double>
+      list of str (date)→ List<Date>
+      list of str       → List<String>
+      dict              → ClassName  (generates ClassNamePojo.java)
+
+  converter\<connectorid>Converter.java
+    Generated from TemplateConverter.java.txt (TEMPLATE_CONVERTER_JAVA)
+    if responseExample is provided. Otherwise a generic stub is written.
+
+    Processing steps:
+      1. Read the template file (UTF-8, BOM-safe).
+      2. Apply token replacements:
+           <projectname>     → projectname from JSON
+           <connectorid>     → connectorid from JSON
+           <requestExample>  → stem of requestExample filename
+                               (or connectorid if requestExample is absent)
+           <responseExample> → stem of responseExample filename
+      3. Replace TODO markers with generated conversion logic
+         (_json_to_conversion_logic):
+
+         1st occurrence of "// TODO: implement the conversion logic here"
+           → inside to<connectorid>Entity(): generated from responseExample JSON.
+             Maps <responseExample>Pojo → <connectorid>Entity (IDL struct).
+
+         2nd occurrence of "// TODO: implement the conversion logic here"
+           → inside to<connectorid>Pojo(): generated from requestExample JSON.
+             Maps <connectorid>Request (IDL) → <requestExample>Pojo.
+
+      4. Write the output file (UTF-8).
+
+    Conversion logic generation (_json_to_conversion_logic):
+      - Reads the JSON example file (UTF-8, BOM-safe).
+      - Unwraps list root to first element if applicable.
+      - For each top-level field:
+          Primitive / date / string / list of primitives:
+            → rv.set<Key>(<source_var>.get<Key>());
+          Nested object (dict):
+            → rv.set<Key>(convertTo<Key>(<source_var>.get<Key>()));
+              + generates a private convertTo<Key>(<Key>Pojo pojo) helper method
+          List of objects:
+            → for (<SingularName>Pojo item : safe(<source_var>.get<Key>())) {
+                  rv.get<Key>().add(convertTo<SingularName>(item));
+              }
+              + generates a private convertTo<SingularName>(<SingularName>Pojo pojo)
+                helper method
+      - Helper methods are generated recursively for all nested levels.
+      - Each helper method is deduplicated by struct name (generated only once).
+      - Helper methods are appended after the top-level body lines, separated
+        by a blank line, and injected inline into the converter class body.
+      - source_var parameter:
+          "pojo"    → used for to<connectorid>Entity() (from responseExample)
+          "request" → used for to<connectorid>Pojo()   (from requestExample)
+      - safe() method (already present in TemplateConverter.java.txt) handles
+        null iterables by returning an empty list, making null checks unnecessary
+        in for-each loops.
+      - If the JSON file is missing, empty, or unparseable, the TODO comment
+        is left unchanged and a [WARN] is printed.
+
+  factories\<connectorid>Factory.java
+    Generated from TemplateFactory.java.txt (TEMPLATE_FACTORY_JAVA).
+    Processing steps:
+      1. Read the template file (UTF-8, BOM-safe).
+      2. Apply token replacements:
+           <projectname>  → projectname from JSON
+           <connectorid>  → connectorid from JSON
+           <apiPath>      → apiPath from JSON
+      3. Write the output file (UTF-8).
+
+  exception\<connectorid>ConversionException.java
+    Generated from TemplateException.java.txt (TEMPLATE_EXCEPTION_JAVA).
+    Processing steps:
+      1. Read the template file (UTF-8, BOM-safe).
+      2. Apply token replacements:
+           <projectname>  → projectname from JSON
+           <connectorid>  → connectorid from JSON
+      3. Write the output file (UTF-8).
+    Output class name: <connectorid>ConversionException
+
+  Note: src path uses dots-as-separators rule for <projectname>.
+
+--------------------------------------------------------------------------------
+12. SCRIPT EXECUTION FLOW SUMMARY
+--------------------------------------------------------------------------------
+
+main()
+ ├── load_definition()                  ← Parse & validate JSON
+ ├── copy_templates()                   ← Copy all template dirs recursively
+ ├── edit_config_files()                ← Token replace in config .project & pom.xml
+ ├── edit_api_files()                   ← Token replace + rename src package in api project
+ ├── edit_impl_files()                  ← Token replace + rename src package in impl project
+ ├── generate_config_per_connector()    ← Per connector: OSGI-INF xml, ConfigComponent
+ │                                         java stubs, MANIFEST.MF update
+ ├── generate_api_per_connector()       ← Per connector: connectors.xml +
+ │                                         <connectorid>Types.model IDL file
+ └── generate_impl_per_connector()      ← Per connector:
+                                           call\<connectorid>Connector.java (from template)
+                                           model\<requestStem>Pojo.java (if requestExample)
+                                           model\<responseStem>Pojo.java (if responseExample)
+                                             + recursive nested <ClassName>Pojo.java files
+                                           converter\<connectorid>Converter.java
+                                             (from TemplateConverter.java.txt with full
+                                              recursive conversion logic, or stub)
+                                           factories\<connectorid>Factory.java (from template)
+                                           exception\<connectorid>ConversionException.java
+                                             (from template)
+
+================================================================================

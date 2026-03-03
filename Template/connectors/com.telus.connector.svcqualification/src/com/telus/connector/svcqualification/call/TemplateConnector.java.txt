@@ -1,0 +1,87 @@
+package com.telus.connector.<projectname>.call;
+
+import java.util.Map;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation.Builder;
+import javax.ws.rs.client.InvocationCallback;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
+
+import org.slf4j.LoggerFactory;
+
+import com.iisy.solvatio.connector.AsyncConnectorCallback;
+import com.iisy.solvatio.connector.ConnectorError;
+import com.iisy.solvatio.connector.ConnectorException;
+import com.solvatio.connector.rest.common.connector.AsyncRestConnector;
+import com.telus.connector.<projectname>.api.datatypes.<connectorid>DataRecord;
+import com.telus.connector.<projectname>.api.datatypes.<connectorid>Entity;
+import com.telus.connector.<projectname>.api.datatypes.<connectorid>Request;
+
+
+public class <connectorid>Connector extends AsyncRestConnector<<connectorid>DataRecord> {
+	public static final String ID = "<connectorid>";
+	public final static String QUALIFIED_ID = "com.telus.connector.<projectname>" + "." + ID;
+	public String targetEnv;
+
+	public <connectorid>Connector(WebTarget target) {
+		super(target, LoggerFactory.getLogger(QUALIFIED_ID));
+	}
+
+	@Override
+	public void execute(Map<String, Object> args, AsyncConnectorCallback<<connectorid>DataRecord> callback)
+			throws ConnectorException {
+		logger.info("<connectorid>... ");
+		
+		<connectorid>Request request = (<connectorid>Request) args.get("parameters");
+		if ((request == null) || (request.getLpdsId() == null)) {
+			logger.error("Missing Parameter : lpdsId. ");
+			callback.failed(new ConnectorError("Missing Parameter : lpdsId"));
+		}
+
+		try {
+			Builder requestBuilder = this.target
+				.path(request.getLpdsId())
+				.request(MediaType.APPLICATION_JSON);
+	        
+	        if (targetEnv != null && !targetEnv.isEmpty()) {
+	            requestBuilder.header("env", this.targetEnv);
+	        }
+
+			requestBuilder
+				.header("Content-type", MediaType.APPLICATION_JSON)
+				.accept(MediaType.APPLICATION_JSON)
+				// ConnectorGenerator: if <httpMethod> == GET
+				.async().method("GET", Entity.entity(null, MediaType.APPLICATION_JSON_TYPE),
+				// ConnectorGenerator: else if <httpMethod> == POST
+				.async().method("POST", Entity.entity(requestString, MediaType.APPLICATION_JSON_TYPE), new InvocationCallback<<connectorid>DataRecord>() {
+				// ConnectorGenerator: else if <httpMethod> == PATCH
+				.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
+				.async().method("PATCH", Entity.entity(requestBody, MediaType.APPLICATION_JSON_TYPE),
+				// ConnectorGenerator: end if
+
+						new InvocationCallback<<connectorid>Entity>() {
+							@Override
+							public void completed(<connectorid>Entity entity) {
+								<connectorid>DataRecord dataRecord = <connectorid>DataRecord.create();
+								dataRecord.setSvcQualificationEntity(entity);
+								callback.complete(dataRecord);
+							}
+
+							@Override
+							public void failed(Throwable cause) {
+								logger.error("Connector callback failed. ", cause);
+								callback.failed(new ConnectorError(cause.getMessage()));
+							}
+
+						});
+
+		} catch (Exception cause) {
+			logger.error("Connector call failed. ", cause);
+			callback.failed(new ConnectorError(cause.getMessage()));
+		}
+
+		
+	}
+
+}

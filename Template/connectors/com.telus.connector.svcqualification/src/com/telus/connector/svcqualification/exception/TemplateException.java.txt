@@ -1,0 +1,11 @@
+package com.telus.connector.<projectname>.exception;
+
+import com.solvatio.connector.rest.common.domaininterface.conversion.ConversionException;
+
+public class <connectorid>ConversionException extends ConversionException {
+
+	public <connectorid>ConversionException(String message) {
+		super(message);
+	}
+
+}
