@@ -68,7 +68,8 @@ MODELDIR         = $KBDIR\model
 CALLDIR          = $MODELDIR\da\call
 QADIR            = $MODELDIR\qa\da
 
-TEMPLATEDIR          = C:\cb\Insight10.8\Template
+TEMPLATEDIR          = C:\github\t807051\ConnectorGenerator\Template
+                       (alternate: C:\cb\Insight10.8\Template — commented out)
 TEMPLATECONNECTORDIR = $TEMPLATEDIR\connectors
 TEMPLATEBUILDDIR     = $TEMPLATEDIR\build
 TEMPLATEKBCALLDIR    = $TEMPLATEDIR\knowledgebases\com.telus.falcon.knowledgebase\models\da\call
@@ -92,6 +93,14 @@ TEMPLATE_CONVERTER_JAVA =
   $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification\
     src\com\telus\connector\svcqualification\converter\TemplateConverter.java.txt
 
+TEMPLATE_ICONFIG_JAVA =
+  $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.config\
+    src\com\telus\connector\svcqualification\ITemplateConfigurationComponent.java.txt
+
+TEMPLATE_CONFIG_JAVA =
+  $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.config\
+    src\com\telus\connector\svcqualification\TemplateConfigurationComponent.java.txt
+
 --------------------------------------------------------------------------------
 3. SCRIPT REQUIREMENTS
 --------------------------------------------------------------------------------
@@ -103,14 +112,15 @@ TEMPLATE_CONVERTER_JAVA =
     a) Copying template directories to target locations.
     b) Editing copied files with data from the connector definition.
     c) Generating new files per connector based on defined templates.
-
-Python standard library modules used:
+  Python standard library modules used:
   - os                     (path manipulation, file/directory operations)
   - json                   (JSON parsing)
   - shutil                 (recursive directory copy)
   - sys                    (command-line arguments, exit)
   - re                     (regex for ConnectorGenerator conditional block
-                            parsing and date string detection)
+                            parsing, date string detection, Service-Component
+                            stripping in MANIFEST.MF, and import injection
+                            in the converter)
   - xml.etree.ElementTree  (XML element building for connectors.xml)
   - xml.dom.minidom        (XML pretty-printing for connectors.xml)
 
@@ -122,16 +132,18 @@ When constructing src\ directory paths, any dots (.) in <projectname> must be
 replaced with path separators (\). e.g. projectname "inventory.tmf"
        → src\com\telus\connector\inventory\tmf\
 
-This applies to:
+This applies to ALL src\ paths including:
   - src package paths in the config project
   - src package paths in the api project
   - src package paths in the implementation project
+  - the api\datatypes path in the api project
 
 Directory/project folder names and Java package declarations retain dots as-is.
-
-NOTE: The datatypes directory in the API project is an exception — it uses a
-flat folder name with dots retained directly under src\:
-  src\com.telus.connector.<projectname>.api.datatypes\
+The datatypes directory in the API project follows the same dots-as-separators
+rule as all other src\ paths:
+  src\com\telus\connector\<projectname with dots as \>\api\datatypes\
+  e.g. projectname "inventory.tmf"
+       → src\com\telus\connector\inventory\tmf\api\datatypes\
 
 --------------------------------------------------------------------------------
 5. STEP 1 — COPY TEMPLATE DIRECTORIES
@@ -183,10 +195,39 @@ replacing "svcqualification" with <projectname> in directory names:
 Project: $CONNECTORDIR\com.telus.connector.<projectname>.config
 
   .project
-    Replace "svcQualification" with <projectname>
+    Replace "svcqualification" with <projectname>
 
   pom.xml
-    Replace "svcQualification" with <projectname>
+    Replace "svcqualification" with <projectname>
+
+  META-INF\MANIFEST.MF
+    Replace "svcqualification" with <projectname>
+    Then strip any pre-existing Service-Component: entries (and any immediately
+    preceding blank lines) that were copied from the template, using regex:
+      - Pattern 1: \n[\t ]*\nService-Component:[^\n]*(\n[ \t]+[^\n]*)* → ""
+      - Pattern 2: \nService-Component:[^\n]*(\n[ \t]+[^\n])*          → ""
+    This ensures only the freshly generated Service-Component entries
+    (appended later by _append_service_components()) appear in the file.
+    If the file does not exist, this step is skipped silently.
+
+--------------------------------------------------------------------------------
+6b. STEP 2b — EDIT BUILD PROJECT FILES
+--------------------------------------------------------------------------------
+
+For each of the following build subdirectories under $BUILDDIR:
+  com.telus.connector.<projectname>.api.esa
+  com.telus.connector.<projectname>.build
+  com.telus.connector.<projectname>.config.esa
+  com.telus.connector.<projectname>.esa
+  com.telus.connector.<projectname>.feature
+  com.telus.connector.<projectname>.p2
+
+  .project  (if it exists)
+    Replace "svcqualification" with <projectname>
+    If file not found: print [WARN] and skip.
+  pom.xml  (if it exists)
+    Replace "svcqualification" with <projectname>
+    If file not found: print [WARN] and skip.
 
 --------------------------------------------------------------------------------
 7. STEP 3 — EDIT API PROJECT FILES
@@ -230,6 +271,10 @@ Project: $CONNECTORDIR\com.telus.connector.<projectname>
     e.g. src\com\telus\connector\inventory\tmf
     Note: Create the new parent directory before renaming.
 
+  src\com\telus\connector\<projectname>\Constants.java  (after package rename)
+    Replace "svcqualification" with <projectname>
+    If the file does not exist: print [WARN] and skip.
+
 --------------------------------------------------------------------------------
 9. STEP 5 — GENERATE CONFIG FILES PER CONNECTOR
 --------------------------------------------------------------------------------
@@ -263,13 +308,54 @@ For each <connectorid> in the connector list:
      Note: "SvcQualification" in the <property> target value is a fixed literal.
 
   B) Generate src\com\telus\connector\<projectname>\I<connectorid>ConfigurationComponent.java
-     (stub Java interface)
+
+     Generated from TEMPLATE_ICONFIG_JAVA (ITemplateConfigurationComponent.java.txt),
+     located at:
+       $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.config\
+         src\com\telus\connector\svcqualification\ITemplateConfigurationComponent.java.txt
+
+     Processing steps:
+       1. Read the template file (UTF-8, BOM-safe).
+       2. Apply token replacements:
+            <projectname>  → projectname from JSON
+            <connectorid>  → connectorid from JSON
+       3. Write the output file (UTF-8) to:
+            src\com\telus\connector\<projectname>\I<connectorid>ConfigurationComponent.java
 
   C) Generate src\com\telus\connector\<projectname>\<connectorid>ConfigurationComponent.java
-     (stub Java implementation class)
 
-  D) Update META-INF\MANIFEST.MF
-     Append all generated OSGI-INF filenames to the Service-Component entry.
+     Generated from TEMPLATE_CONFIG_JAVA (TemplateConfigurationComponent.java.txt),
+     located at:
+       $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.config\
+         src\com\telus\connector\svcqualification\TemplateConfigurationComponent.java.txt
+
+     Processing steps:
+       1. Read the template file (UTF-8, BOM-safe).
+       2. Apply token replacements:
+            <projectname>  → projectname from JSON
+            <connectorid>  → connectorid from JSON
+       3. Write the output file (UTF-8) to:
+            src\com\telus\connector\<projectname>\<connectorid>ConfigurationComponent.java
+
+  D) Delete template .txt files from the copied config project src directory.
+     After generating B) and C), delete the following files from:
+       $CONNECTORDIR\com.telus.connector.<projectname>.config\
+         src\com\telus\connector\svcqualification\
+
+       - ITemplateConfigurationComponent.java.txt
+       - TemplateConfigurationComponent.java.txt
+
+     After deletion, remove the now-empty svcqualification\ directory using
+     os.rmdir(). If either file is not found, print [WARN] and continue.
+
+  E) Update META-INF\MANIFEST.MF
+     Append all generated OSGI-INF filenames to the Service-Component entry,
+     each prefaced with "OSGI-INF/". Format:
+       Service-Component: OSGI-INF/com.telus.connector.<projectname>.<connectorid>.xml
+     Multiple entries are comma-separated with a leading space continuation:
+       Service-Component: OSGI-INF/com.telus.connector.<projectname>.<connectorid1>.xml,
+        OSGI-INF/com.telus.connector.<projectname>.<connectorid2>.xml
+     (Pre-existing template Service-Component entries were already removed in Step 2.)
 
 --------------------------------------------------------------------------------
 10. STEP 6 — GENERATE API FILES PER CONNECTOR
@@ -310,8 +396,7 @@ For each connector, generate two outputs in the API project:
      is replaced with: <?xml version="1.0" encoding="UTF-8"?>
      Blank lines are stripped from the output.
 
-  B) src\com.telus.connector.<projectname>.api.datatypes\<connectorid>Types.model
-     (IDL file — flat folder name with dots retained, directly under src\)
+  B) src\com\telus\connector\<projectname with dots as \>\api\datatypes\<connectorid>Types.model
 
      Generated by _write_types_idl(). Structure:
 
@@ -327,27 +412,35 @@ For each connector, generate two outputs in the API project:
            <IDL fields derived from responseExample JSON>
        }
 
+       <additional top-level struct definitions — one per nested object/array
+        found in requestExample or responseExample, emitted in discovery order,
+        deduplicated>
+
        struct <connectorid>DataRecord : AbstractDataRecord {
-           <connectorid>Entity entity
+           <connectorid>Entity entityy
        }
+
+     Note: The entity field in DataRecord is named "entityy" (double-y) to
+     avoid a keyword clash with the IDL "entity" keyword.
 
      IDL field generation rules (_json_to_idl_fields):
        - If the root JSON value is a list, the first element (if a dict) is
          used for field inference.
        - JSON object keys become IDL field declarations.
-       - Nested objects (dict values) become inline struct definitions:
-           struct <Key> { ... }
-           <Key> <key>
+       - Nested objects (dict values) → struct definition collected into
+         top_level_structs, emitted AFTER the parent struct (not inline).
+         Field declaration in parent: <StructName> <key>
          (struct name = key.capitalize())
-       - Arrays of objects use _infer_fields_from_list() — ALL elements are
-         scanned to find the best non-null value per field (not just the first).
-         Fields null across all elements get a TODO comment.
-         Struct naming uses _singularize(key).capitalize():
-           struct <SingularName> { ... }
-           list of <SingularName> <key>
-       - Primitive fields use _json_value_to_idl_type(), which returns a
-         tuple (idl_type, comment). If comment is non-empty it is appended
-         inline: <type> <key>  <comment>
+       - Arrays of objects → struct definition collected into top_level_structs,
+         emitted separately. Field declaration uses array syntax:
+         <SingularName>[] <key>
+         Struct naming uses _singularize(key).capitalize().
+         _infer_fields_from_list() scans ALL elements for best non-null value.
+       - Primitive fields use _json_value_to_idl_type() → (idl_type, comment).
+       - top_level_structs is passed by reference through all recursive calls
+         and deduplicated before output.
+       - request_structs and entity_structs are collected separately and merged
+         (request first, then entity, deduplicated) in _write_types_idl().
 
      _singularize(name) rules:
        - ends with "ies"          → replace with "y"   (e.g. categories → category)
@@ -361,31 +454,33 @@ For each connector, generate two outputs in the API project:
      to the "date" IDL type instead of "string".
 
      _json_value_to_idl_type(key, value, indent) — returns (type, comment):
-       bool              → ("boolean", "")
+       bool              → ("bool", "")
        int               → ("long", "")
        float             → ("double", "")
        str (date-like)   → ("date", "")
        str (other)       → ("string", "")
        None/null         → ("string", "// TODO: verify data type - null in sample")
-       list (empty)      → ("list of string",
+       list (empty)      → ("string[]",
                             "// TODO: verify data type - empty array in sample")
-       list of bool      → ("list of boolean", "")
-       list of int       → ("list of long", "")
-       list of float     → ("list of double", "")
-       list of str (date)→ ("list of date", "")
-       list of str       → ("list of string", "")
-       list (other)      → ("list of string",
+       list of bool      → ("bool[]", "")
+       list of int       → ("long[]", "")
+       list of float     → ("double[]", "")
+       list of str (date)→ ("date[]", "")
+       list of str       → ("string[]", "")
+       list (other)      → ("string[]",
                             "// TODO: verify data type - empty array in sample")
        other             → ("string", "")
 
-     _infer_fields_from_list(items, indent) — for list-of-object fields:
+     _infer_fields_from_list(items, indent, top_level_structs):
        - Collects all keys from the first element.
-       - For each key, finds the first non-null value across ALL elements
-         (_first_non_null_value).
+       - For each key, finds the first non-null value across ALL elements.
        - If all values are null: emits
          string <key>  // TODO: verify data type - all values null in sample
-       - Otherwise applies the same struct/list-of-struct/primitive logic
-         as _json_to_idl_fields().
+       - Nested objects → struct collected into top_level_structs,
+         field uses <StructName> <key>
+       - Nested list of objects → struct collected into top_level_structs,
+         field uses <SingularName>[] <key>
+       - Otherwise applies primitive logic via _json_value_to_idl_type().
 
      requestExample / responseExample handling:
        - Filenames are read from the connector's "requestExample" /
@@ -413,10 +508,11 @@ For each <connectorid>, generate the following files under:
       2. Process ConnectorGenerator conditional blocks based on httpMethod,
          keeping only the lines matching the given httpMethod and discarding others.
       3. Apply token replacements:
-           <projectname>  → projectname
-           <connectorid>  → connectorid
+           <projectname>    → projectname
+           <connectorid>    → connectorid
+           <requestExample> → stem of requestExample filename
+                              (or connectorid if requestExample is absent)
       4. Write the output file (UTF-8).
-
     Conditional block syntax in template:
       // ConnectorGenerator: if <httpMethod> == GET
           ... GET-specific code ...
@@ -425,12 +521,15 @@ For each <connectorid>, generate the following files under:
       // ConnectorGenerator: else if <httpMethod> == PATCH
           ... PATCH-specific code ...
       // ConnectorGenerator: end if
-
     Rules:
       - Only the branch whose method matches httpMethod (case-insensitive) is emitted.
       - Once a branch is matched, subsequent else-if branches are suppressed.
       - Directive lines themselves are never emitted.
       - Lines outside any conditional block are always emitted.
+      - <requestExample> token appears in POST-specific blocks (e.g. import
+        and instantiation of the <requestExample>Pojo class). It is replaced
+        with the requestExample filename stem (or connectorid as fallback)
+        after conditional block processing is complete.
 
   model\<requestStem>Pojo.java
     Generated by _write_pojo_java() if requestExample is provided.
@@ -446,10 +545,11 @@ For each <connectorid>, generate the following files under:
       - For each top-level key/value pair, generates a private field + getter + setter.
       - Recursively generates separate <ClassName>Pojo.java files for:
           dict values     → class name = key.capitalize() + "Pojo"
-                            field type = key.capitalize()  (e.g. Meta)
+                            field type = key.capitalize() + "Pojo"
+                            (e.g. MetaPojo — field and class both use full Pojo suffix)
           list of objects → class name = _singularize(key).capitalize() + "Pojo"
-                            field type = List<_singularize(key).capitalize()>
-                            (e.g. List<Outage>)
+                            field type = List<_singularize(key).capitalize() + "Pojo">
+                            (e.g. List<OutagePojo>)
                             All list elements are merged to get the full field set
                             (best non-null value per key across all elements).
       - Nested POJO files are written to the same model\ directory.
@@ -459,7 +559,6 @@ For each <connectorid>, generate the following files under:
           Nested POJO types → import com.telus.connector.<projectname>.model.<NestedClass>Pojo;
       - If the file is missing, empty, or unparseable, a stub class is written
         with a // TODO: add fields comment and a [WARN] is printed.
-
     Java type mapping (_json_to_pojo_fields):
       bool              → boolean
       int               → long
@@ -467,43 +566,57 @@ For each <connectorid>, generate the following files under:
       str (date-like)   → Date
       str (other)       → String
       None              → String  (with // TODO: verify data type comment)
-      list of objects   → List<SingularClassName>  (generates SingularClassNamePojo.java)
+      list of objects   → List<SingularClassNamePojo>  (generates SingularClassNamePojo.java)
       list (empty)      → List<String>  (with // TODO: verify data type comment)
       list of bool      → List<Boolean>
       list of int       → List<Long>
       list of float     → List<Double>
       list of str (date)→ List<Date>
       list of str       → List<String>
-      dict              → ClassName  (generates ClassNamePojo.java)
+      dict              → ClassNamePojo  (generates ClassNamePojo.java)
 
   converter\<connectorid>Converter.java
     Generated from TemplateConverter.java.txt (TEMPLATE_CONVERTER_JAVA)
     if responseExample is provided. Otherwise a generic stub is written.
-
     Processing steps:
       1. Read the template file (UTF-8, BOM-safe).
-      2. Apply token replacements:
+      2. Process '// ConnectorGenerator: if <requestExample> != null' block:
+           - If requestExample is present → keep the block body, strip directive lines.
+           - If requestExample is absent  → strip the entire block including body.
+         This controls inclusion of the to<connectorid>Pojo() method.
+      3. Apply token replacements:
            <projectname>     → projectname from JSON
            <connectorid>     → connectorid from JSON
            <requestExample>  → stem of requestExample filename
                                (or connectorid if requestExample is absent)
            <responseExample> → stem of responseExample filename
-      3. Replace TODO markers with generated conversion logic
-         (_json_to_conversion_logic):
-
-         1st occurrence of "// TODO: implement the conversion logic here"
-           → inside to<connectorid>Entity(): generated from responseExample JSON.
+      4. Replace 1st occurrence of "// TODO: implement the conversion logic here"
+           → inside to<connectorid>Entity(): body lines only (rv.setXxx(...))
+             generated from responseExample JSON.
              Maps <responseExample>Pojo → <connectorid>Entity (IDL struct).
-
-         2nd occurrence of "// TODO: implement the conversion logic here"
-           → inside to<connectorid>Pojo(): generated from requestExample JSON.
+             The template already provides 'return rv;' and the closing '}'.
+      5. Replace 2nd occurrence of "// TODO: implement the conversion logic here"
+           → inside to<connectorid>Pojo(): body lines only (rv.setXxx(...))
+             generated from requestExample JSON.
              Maps <connectorid>Request (IDL) → <requestExample>Pojo.
-
-      4. Write the output file (UTF-8).
+             The template already provides 'return rv;' and the closing '}'.
+      6. Inject private helper methods (convertToXxx) before the class closing '}'.
+         Helper methods are generated for all nested objects and lists of objects
+         found in the JSON examples.
+      7. Inject import statements for nested API datatype structs after the last
+         existing import line:
+           import com.telus.connector.<projectname>.api.datatypes.<StructName>;
+         One import per nested struct type discovered during conversion logic
+         generation (e.g. Signal, Smartphone).
+      8. Write the output file (UTF-8).
 
     Conversion logic generation (_json_to_conversion_logic):
       - Reads the JSON example file (UTF-8, BOM-safe).
       - Unwraps list root to first element if applicable.
+      - Returns a tuple: (top_level_body, helpers_str, nested_api_types)
+          top_level_body   : rv.set<Key>(...) lines — injected into the TODO marker.
+          helpers_str      : private convertToXxx() methods — injected before class '}'.
+          nested_api_types : list of struct names needing api.datatypes imports.
       - For each top-level field:
           Primitive / date / string / list of primitives:
             → rv.set<Key>(<source_var>.get<Key>());
@@ -516,18 +629,27 @@ For each <connectorid>, generate the following files under:
               }
               + generates a private convertTo<SingularName>(<SingularName>Pojo pojo)
                 helper method
+      - Helper methods use <StructName>.create() (not new <StructName>()) because
+        API datatype structs use a factory create() method.
       - Helper methods are generated recursively for all nested levels.
       - Each helper method is deduplicated by struct name (generated only once).
-      - Helper methods are appended after the top-level body lines, separated
-        by a blank line, and injected inline into the converter class body.
       - source_var parameter:
           "pojo"    → used for to<connectorid>Entity() (from responseExample)
           "request" → used for to<connectorid>Pojo()   (from requestExample)
       - safe() method (already present in TemplateConverter.java.txt) handles
         null iterables by returning an empty list, making null checks unnecessary
         in for-each loops.
-      - If the JSON file is missing, empty, or unparseable, the TODO comment
-        is left unchanged and a [WARN] is printed.
+      - If the JSON file is missing, empty, or unparseable, returns ("", "", [])
+        and the TODO comment is left unchanged.
+
+    TemplateConverter.java.txt conditional block syntax:
+      // ConnectorGenerator: if <requestExample> != null
+          ... to<connectorid>Pojo() method body ...
+      // ConnectorGenerator: end if
+    Rules:
+      - If requestExample is present: keep body, strip directive lines only.
+      - If requestExample is absent:  strip entire block including body.
+      - Directive lines themselves are never emitted.
 
   factories\<connectorid>Factory.java
     Generated from TemplateFactory.java.txt (TEMPLATE_FACTORY_JAVA).
@@ -558,21 +680,48 @@ For each <connectorid>, generate the following files under:
 main()
  ├── load_definition()                  ← Parse & validate JSON
  ├── copy_templates()                   ← Copy all template dirs recursively
- ├── edit_config_files()                ← Token replace in config .project & pom.xml
+ ├── edit_config_files()                ← Token replace in config .project,
+ │                                         pom.xml, MANIFEST.MF + strip
+ │                                         pre-existing Service-Component entries
+ ├── edit_build_files()                 ← Token replace in all build subdirectory
+ │                                         .project & pom.xml files
  ├── edit_api_files()                   ← Token replace + rename src package in api project
- ├── edit_impl_files()                  ← Token replace + rename src package in impl project
- ├── generate_config_per_connector()    ← Per connector: OSGI-INF xml, ConfigComponent
- │                                         java stubs, MANIFEST.MF update
+ ├── edit_impl_files()                  ← Token replace in impl .project, pom.xml,
+ │                                         MANIFEST.MF; rename src package folder;
+ │                                         token replace in Constants.java
+ ├── generate_config_per_connector()    ← Per connector: OSGI-INF xml,
+ │                                         I<connectorid>ConfigurationComponent.java
+ │                                           (from TEMPLATE_ICONFIG_JAVA),
+ │                                         <connectorid>ConfigurationComponent.java
+ │                                           (from TEMPLATE_CONFIG_JAVA),
+ │                                         delete ITemplateConfigurationComponent.java.txt
+ │                                           and TemplateConfigurationComponent.java.txt
+ │                                           from copied svcqualification\ src dir,
+ │                                         remove empty svcqualification\ dir,
+ │                                         MANIFEST.MF Service-Component append
+ │                                           (entries prefaced with "OSGI-INF/")
  ├── generate_api_per_connector()       ← Per connector: connectors.xml +
  │                                         <connectorid>Types.model IDL file
+ │                                         (flat top-level structs, arrays,
+ │                                          bool type, entityy field name)
  └── generate_impl_per_connector()      ← Per connector:
-                                           call\<connectorid>Connector.java (from template)
+                                           call\<connectorid>Connector.java
+                                             (from TemplateConnector.java.txt;
+                                              tokens: <projectname>, <connectorid>,
+                                              <requestExample>)
                                            model\<requestStem>Pojo.java (if requestExample)
                                            model\<responseStem>Pojo.java (if responseExample)
                                              + recursive nested <ClassName>Pojo.java files
+                                             (field types use full Pojo suffix:
+                                              List<OutagePojo>, MetaPojo, etc.)
                                            converter\<connectorid>Converter.java
-                                             (from TemplateConverter.java.txt with full
-                                              recursive conversion logic, or stub)
+                                             (from TemplateConverter.java.txt;
+                                              ConnectorGenerator if/end-if block
+                                              controls to<connectorid>Pojo() inclusion;
+                                              TODO markers replaced with body lines only;
+                                              helper methods injected before class '};
+                                              api.datatypes imports injected for nested
+                                              struct types using .create() factory)
                                            factories\<connectorid>Factory.java (from template)
                                            exception\<connectorid>ConversionException.java
                                              (from template)

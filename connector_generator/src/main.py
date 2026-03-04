@@ -40,7 +40,14 @@ TEMPLATE_CONVERTER_JAVA = os.path.join(
     TEMPLATECONNECTORDIR, "com.telus.connector." + TEMPLATE_NAME,
     "src", "com", "telus", "connector", TEMPLATE_NAME, "converter", "TemplateConverter.java.txt"
 )
-
+TEMPLATE_ICONFIG_JAVA = os.path.join(
+    TEMPLATECONNECTORDIR, "com.telus.connector." + TEMPLATE_NAME + ".config",
+    "src", "com", "telus", "connector", TEMPLATE_NAME, "ITemplateConfigurationComponent.java.txt"
+)
+TEMPLATE_CONFIG_JAVA = os.path.join(
+    TEMPLATECONNECTORDIR, "com.telus.connector." + TEMPLATE_NAME + ".config",
+    "src", "com", "telus", "connector", TEMPLATE_NAME, "TemplateConfigurationComponent.java.txt"
+)
 
 # ─────────────────────────────────────────────
 # 2. LOAD CONNECTOR DEFINITION
@@ -59,27 +66,17 @@ def load_definition(json_file: str) -> dict:
         with open(json_file, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in file '{json_file}': {e}")
+        raise ValueError(f"JSON definition file is invalid: {e}")
 
     if "projectname" not in data:
         raise ValueError("Missing required field: 'projectname'")
-    if "connectors" not in data or not isinstance(data["connectors"], list):
-        raise ValueError("Missing or invalid field: 'connectors' (must be a list)")
-    if len(data["connectors"]) == 0:
-        raise ValueError("'connectors' list must contain at least one connector")
+    if "connectors" not in data or not data["connectors"]:
+        raise ValueError("Missing or empty required field: 'connectors'")
 
-    required_connector_fields = ["connectorid", "inputClass", "entityClass",
-                                 "dataRecordClass", "apiPath", "httpMethod"]
-    for i, connector in enumerate(data["connectors"]):
-        for field in required_connector_fields:
+    for connector in data["connectors"]:
+        for field in ["connectorid", "inputClass", "entityClass", "dataRecordClass", "apiPath", "httpMethod"]:
             if field not in connector:
-                raise ValueError(f"Connector [{i}] is missing required field: '{field}'")
-
-    print(f"Successfully loaded definition: {json_file}")
-    print(f"  Project : {data['projectname']}")
-    print(f"  Connectors ({len(data['connectors'])}):")
-    for c in data["connectors"]:
-        print(f"    - {c['connectorid']} [{c['httpMethod']}] {c['apiPath']}")
+                raise ValueError(f"Connector missing required field: '{field}'")
 
     return data
 
@@ -89,7 +86,7 @@ def load_definition(json_file: str) -> dict:
 # ─────────────────────────────────────────────
 
 def copy_templates(projectname: str):
-    """Copy all template directories to their target locations."""
+    """Copy all template directories recursively to their target locations."""
     copies = [
         # Connector dirs
         (f"{TEMPLATECONNECTORDIR}\\com.telus.connector.{TEMPLATE_NAME}",
@@ -125,10 +122,67 @@ def copy_templates(projectname: str):
 # ─────────────────────────────────────────────
 
 def edit_config_files(projectname: str):
-    """Edit .project and pom.xml in the config project directory."""
-    config_dir = os.path.join(CONNECTORDIR, f"com.telus.connector.{projectname}.config")
-    _replace_in_file(os.path.join(config_dir, ".project"), "svcQualification", projectname)
-    _replace_in_file(os.path.join(config_dir, "pom.xml"),  "svcQualification", projectname)
+    """Edit .project, pom.xml, and MANIFEST.MF in the config project directory.
+    Also strips any pre-existing Service-Component entries from MANIFEST.MF
+    (copied from the template) before the generated ones are appended later."""
+    import re as _re
+
+    config_dir    = os.path.join(CONNECTORDIR, f"com.telus.connector.{projectname}.config")
+    manifest_path = os.path.join(config_dir, r"META-INF\MANIFEST.MF")
+
+    _replace_in_file(os.path.join(config_dir, ".project"), "svcqualification", projectname)
+    _replace_in_file(os.path.join(config_dir, "pom.xml"),  "svcqualification", projectname)
+    _replace_in_file(manifest_path,                        "svcqualification", projectname)
+
+    # Remove any pre-existing Service-Component: lines (and preceding blank lines)
+    # that were copied from the template, so only the generated ones remain.
+    if os.path.exists(manifest_path):
+        with open(manifest_path, "r") as f:
+            content = f.read()
+
+        content = _re.sub(
+            r'\n[\t ]*\nService-Component:[^\n]*(\n[ \t]+[^\n]*)*',
+            '',
+            content
+        )
+        content = _re.sub(
+            r'\nService-Component:[^\n]*(\n[ \t]+[^\n]*)*',
+            '',
+            content
+        )
+
+        with open(manifest_path, "w") as f:
+            f.write(content)
+        print(f"  Cleaned Service-Component entries from: {manifest_path}")
+
+
+# ─────────────────────────────────────────────
+# 4b. EDIT BUILD FILES
+# ─────────────────────────────────────────────
+
+def edit_build_files(projectname: str):
+    """Edit .project and pom.xml in each build project subdirectory,
+    the same way as the config project files."""
+    build_suffixes = [
+        "api.esa",
+        "build",
+        "config.esa",
+        "esa",
+        "feature",
+        "p2",
+    ]
+    for suffix in build_suffixes:
+        build_dir    = os.path.join(BUILDDIR, f"com.telus.connector.{projectname}.{suffix}")
+        project_file = os.path.join(build_dir, ".project")
+        pom_file     = os.path.join(build_dir, "pom.xml")
+        if os.path.exists(project_file):
+            _replace_in_file(project_file, "svcqualification", projectname)
+        else:
+            print(f"[WARN] .project not found, skipping: {project_file}")
+        if os.path.exists(pom_file):
+            _replace_in_file(pom_file, "svcqualification", projectname)
+        else:
+            print(f"[WARN] pom.xml not found, skipping: {pom_file}")
 
 
 # ─────────────────────────────────────────────
@@ -160,7 +214,8 @@ def edit_api_files(projectname: str):
 # ─────────────────────────────────────────────
 
 def edit_impl_files(projectname: str):
-    """Edit .project, pom.xml, and MANIFEST.MF in the implementation project."""
+    """Edit .project, pom.xml, MANIFEST.MF, and Constants.java in the
+    implementation project, then rename the src package folder."""
     impl_dir = os.path.join(CONNECTORDIR, f"com.telus.connector.{projectname}")
 
     _replace_in_file(os.path.join(impl_dir, ".project"),              "svcqualification", projectname)
@@ -178,17 +233,28 @@ def edit_impl_files(projectname: str):
     else:
         print(f"[WARN] Package folder not found, skipping rename: {old_pkg}")
 
+    # Edit Constants.java in the renamed package folder
+    constants_file = os.path.join(new_pkg, "Constants.java")
+    if os.path.exists(constants_file):
+        _replace_in_file(constants_file, "svcqualification", projectname)
+    else:
+        print(f"  [WARN] Constants.java not found, skipping: {constants_file}")
 
 # ─────────────────────────────────────────────
 # 7. GENERATE CONFIG FILES PER CONNECTOR
 # ─────────────────────────────────────────────
 
 def generate_config_per_connector(projectname: str, connectors: list):
-    """Generate OSGI-INF xml, ConfigComponent java stubs, and update MANIFEST.MF."""
+    """Generate OSGI-INF xml, ConfigComponent java files, and update MANIFEST.MF.
+    Also deletes the ITemplateConfigurationComponent.java.txt and
+    TemplateConfigurationComponent.java.txt template files from src_dir after use.
+    """
     config_dir = os.path.join(CONNECTORDIR, f"com.telus.connector.{projectname}.config")
     osgi_dir   = os.path.join(config_dir, "OSGI-INF")
     src_dir    = os.path.join(config_dir, "src", "com", "telus", "connector",
                               _projectname_to_path(projectname))
+    delete_dir = os.path.join(config_dir, "src", "com", "telus", "connector", "svcqualification")
+
     os.makedirs(osgi_dir, exist_ok=True)
     os.makedirs(src_dir,  exist_ok=True)
 
@@ -206,9 +272,20 @@ def generate_config_per_connector(projectname: str, connectors: list):
         impl_file = os.path.join(src_dir, f"{cid}ConfigurationComponent.java")
         _write_impl_config(impl_file, projectname, cid)
 
+    # Delete the copied template .txt files — they have been consumed above
+    for txt_name in ["ITemplateConfigurationComponent.java.txt",
+                     "TemplateConfigurationComponent.java.txt"]:
+        txt_path = os.path.join(delete_dir, txt_name)
+        if os.path.exists(txt_path):
+            os.remove(txt_path)
+            print(f"  Deleted template file: {txt_path}")
+        else:
+            print(f"  [WARN] Template file not found for deletion: {txt_path}")
+    # remove delete_dir
+    os.rmdir(delete_dir)
+
     manifest_path = os.path.join(config_dir, r"META-INF\MANIFEST.MF")
     _append_service_components(manifest_path, osgi_files)
-
 
 # ─────────────────────────────────────────────
 # 8. GENERATE API FILES PER CONNECTOR
@@ -223,11 +300,12 @@ def generate_api_per_connector(projectname: str, connectors: list, definition_fi
     api_dir        = os.path.join(CONNECTORDIR, f"com.telus.connector.{projectname}.api")
     osgi_inf_dir   = os.path.join(api_dir, "OSGI-INF", "solvatio")
     connectors_xml = os.path.join(osgi_inf_dir, "connectors.xml")
+    delete_dir = os.path.join(api_dir, "src", "com", "telus", "connector", "svcqualification")
 
     os.makedirs(osgi_inf_dir, exist_ok=True)
     _write_connectors_xml(connectors_xml, projectname, connectors)
 
-    # Flat folder name with dots retained, directly under src\
+    # Proper nested path: src\com\telus\connector\<projectname>\api\datatypes
     datatypes_dir = os.path.join(
         api_dir, "src", "com", "telus", "connector",
         _projectname_to_path(projectname), "api", "datatypes"
@@ -242,30 +320,34 @@ def generate_api_per_connector(projectname: str, connectors: list, definition_fi
         request_example_fname  = connector.get("requestExample")
         response_example_fname = connector.get("responseExample")
 
-        # --- Read & convert requestExample -> IDL fields for <connectorid>Request ---
-        request_fields = ""
+        # --- Read & convert requestExample -> IDL fields ---
+        request_fields  = ""
+        request_structs = []
         if request_example_fname:
             req_path = os.path.join(definition_dir, request_example_fname)
             if os.path.exists(req_path) and os.path.getsize(req_path) > 0:
                 try:
                     with open(req_path, "r", encoding="utf-8-sig") as f:
                         req_data = json.load(f)
-                    request_fields = _json_to_idl_fields(req_data, indent=1)
+                    request_fields = _json_to_idl_fields(req_data, indent=1,
+                                                         top_level_structs=request_structs)
                     print(f"  [Types] Converted requestExample '{request_example_fname}' -> IDL fields")
                 except (json.JSONDecodeError, OSError) as e:
                     print(f"  [WARN] Could not read/parse requestExample '{request_example_fname}': {e}")
             else:
                 print(f"  [WARN] requestExample file not found or empty: {req_path}")
 
-        # --- Read & convert responseExample -> IDL fields for <connectorid>Entity ---
-        entity_fields = ""
+        # --- Read & convert responseExample -> IDL fields ---
+        entity_fields  = ""
+        entity_structs = []
         if response_example_fname:
             resp_path = os.path.join(definition_dir, response_example_fname)
             if os.path.exists(resp_path) and os.path.getsize(resp_path) > 0:
                 try:
                     with open(resp_path, "r", encoding="utf-8-sig") as f:
                         resp_data = json.load(f)
-                    entity_fields = _json_to_idl_fields(resp_data, indent=1)
+                    entity_fields = _json_to_idl_fields(resp_data, indent=1,
+                                                        top_level_structs=entity_structs)
                     print(f"  [Types] Converted responseExample '{response_example_fname}' -> IDL fields")
                 except (json.JSONDecodeError, OSError) as e:
                     print(f"  [WARN] Could not read/parse responseExample '{response_example_fname}': {e}")
@@ -274,7 +356,9 @@ def generate_api_per_connector(projectname: str, connectors: list, definition_fi
 
         # Write the Types IDL file
         types_path = os.path.join(datatypes_dir, f"{cid}Types.model")
-        _write_types_idl(types_path, projectname, cid, request_fields, entity_fields)
+        _write_types_idl(types_path, projectname, cid,
+                         request_fields, entity_fields,
+                         request_structs, entity_structs)
 
 
 # ─────────────────────────────────────────────
@@ -306,7 +390,6 @@ def generate_impl_per_connector(projectname: str, connectors: list, definition_f
         response_example_fname = connector.get("responseExample")
 
         # Derive stem names (filename without extension) for POJO class names
-        # e.g. "myRequest.json" -> "myRequest"
         request_stem  = os.path.splitext(request_example_fname)[0]  if request_example_fname  else None
         response_stem = os.path.splitext(response_example_fname)[0] if response_example_fname else None
 
@@ -314,10 +397,11 @@ def generate_impl_per_connector(projectname: str, connectors: list, definition_f
         call_dir = os.path.join(src_base, "call")
         os.makedirs(call_dir, exist_ok=True)
         _write_connector_java(
-            path        = os.path.join(call_dir, f"{cid}Connector.java"),
-            projectname = projectname,
-            connectorid = cid,
-            http_method = http_method
+            path         = os.path.join(call_dir, f"{cid}Connector.java"),
+            projectname  = projectname,
+            connectorid  = cid,
+            http_method  = http_method,
+            request_stem = request_stem
         )
 
         # --- model: generate POJO(s) from example JSON files ---
@@ -362,7 +446,6 @@ def generate_impl_per_connector(projectname: str, connectors: list, definition_f
                 req_json_path         = req_path_for_conv
             )
         else:
-            # Fall back to generic stub if no responseExample
             _write_java_stub(
                 os.path.join(converter_dir, f"{cid}Converter.java"),
                 projectname, cid, "converter"
@@ -416,6 +499,7 @@ def main():
     try:
         copy_templates(projectname)
         edit_config_files(projectname)
+        edit_build_files(projectname)
         edit_api_files(projectname)
         edit_impl_files(projectname)
         generate_config_per_connector(projectname, connectors)
@@ -494,12 +578,12 @@ def _first_non_null_value(items: list, key: str):
     return None
 
 
-def _infer_fields_from_list(items: list, indent: int) -> str:
+def _infer_fields_from_list(items: list, indent: int,
+                            top_level_structs: list) -> str:
     """
     Infer IDL fields from a list of JSON objects by scanning ALL elements,
-    not just the first. For each field key, the first non-null value across
-    all elements is used to determine the IDL type.
-    Fields that are null across all elements get a TODO comment.
+    not just the first. Nested struct definitions are collected into
+    top_level_structs (not inlined).
     """
     tab   = "\t" * indent
     lines = []
@@ -516,22 +600,23 @@ def _infer_fields_from_list(items: list, indent: int) -> str:
             lines.append(
                 f"{tab}string {key}  // TODO: verify data type - all values null in sample"
             )
+
         elif isinstance(best_value, dict):
             struct_name   = key.capitalize()
-            nested_fields = _json_to_idl_fields(best_value, indent + 1)
-            lines.append(f"{tab}struct {struct_name} {{")
-            if nested_fields:
-                lines.append(nested_fields)
-            lines.append(f"{tab}}}")
+            nested_fields = _json_to_idl_fields(best_value, 1, top_level_structs)
+            struct_block  = f"struct {struct_name} {{\n{nested_fields}\n}}"
+            if struct_block not in top_level_structs:
+                top_level_structs.append(struct_block)
             lines.append(f"{tab}{struct_name} {key}")
+
         elif isinstance(best_value, list) and best_value and isinstance(best_value[0], dict):
             singular_name = _singularize(key).capitalize()
-            elem_fields   = _infer_fields_from_list(best_value, indent + 1)
-            lines.append(f"{tab}struct {singular_name} {{")
-            if elem_fields:
-                lines.append(elem_fields)
-            lines.append(f"{tab}}}")
-            lines.append(f"{tab}list of {singular_name} {key}")
+            elem_fields   = _infer_fields_from_list(best_value, 1, top_level_structs)
+            struct_block  = f"struct {singular_name} {{\n{elem_fields}\n}}"
+            if struct_block not in top_level_structs:
+                top_level_structs.append(struct_block)
+            lines.append(f"{tab}{singular_name}[] {key}")
+
         else:
             idl_type, comment = _json_value_to_idl_type(key, best_value, indent)
             field_line = f"{tab}{idl_type} {key}"
@@ -542,20 +627,16 @@ def _infer_fields_from_list(items: list, indent: int) -> str:
     return "\n".join(lines)
 
 
-def _json_to_idl_fields(data, indent: int = 1) -> str:
+def _json_to_idl_fields(data, indent: int = 1,
+                        top_level_structs: list = None) -> str:
     """
-    Recursively convert a parsed JSON object (dict or list) into IDL field declarations.
-    JSON type mapping:
-      str               -> string (or date if value matches a date pattern)
-      int               -> long
-      float             -> double
-      bool              -> boolean
-      None              -> string  + TODO comment
-      list (empty)      -> list of string  + TODO comment
-      list of primitives-> list of primitive IDL type
-      list of objects   -> struct Singular defined first, then: list of Singular fieldname
-      dict              -> struct FieldName defined first, then: FieldName fieldname
+    Recursively convert a parsed JSON object (dict or list) into IDL field
+    declarations. Nested struct definitions are collected into top_level_structs
+    and emitted as separate top-level structs, not inlined.
     """
+    if top_level_structs is None:
+        top_level_structs = []
+
     tab   = "\t" * indent
     lines = []
 
@@ -571,21 +652,19 @@ def _json_to_idl_fields(data, indent: int = 1) -> str:
 
         if isinstance(value, dict):
             struct_name   = key.capitalize()
-            nested_fields = _json_to_idl_fields(value, indent + 1)
-            lines.append(f"{tab}struct {struct_name} {{")
-            if nested_fields:
-                lines.append(nested_fields)
-            lines.append(f"{tab}}}")
+            nested_fields = _json_to_idl_fields(value, 1, top_level_structs)
+            struct_block  = f"struct {struct_name} {{\n{nested_fields}\n}}"
+            if struct_block not in top_level_structs:
+                top_level_structs.append(struct_block)
             lines.append(f"{tab}{struct_name} {key}")
 
         elif isinstance(value, list) and value and isinstance(value[0], dict):
             singular_name = _singularize(key).capitalize()
-            elem_fields   = _infer_fields_from_list(value, indent + 1)
-            lines.append(f"{tab}struct {singular_name} {{")
-            if elem_fields:
-                lines.append(elem_fields)
-            lines.append(f"{tab}}}")
-            lines.append(f"{tab}list of {singular_name} {key}")
+            elem_fields   = _infer_fields_from_list(value, 1, top_level_structs)
+            struct_block  = f"struct {singular_name} {{\n{elem_fields}\n}}"
+            if struct_block not in top_level_structs:
+                top_level_structs.append(struct_block)
+            lines.append(f"{tab}{singular_name}[] {key}")
 
         else:
             idl_type, comment = _json_value_to_idl_type(key, value, indent)
@@ -600,12 +679,10 @@ def _json_to_idl_fields(data, indent: int = 1) -> str:
 def _json_value_to_idl_type(key: str, value, indent: int) -> tuple:
     """
     Map a single JSON primitive or list-of-primitives value to a tuple of
-    (idl_type_string, comment_string). comment_string is empty string when
-    there is no comment. Dict and list-of-objects are handled directly in
-    _json_to_idl_fields() and _infer_fields_from_list().
+    (idl_type_string, comment_string).
     """
     if isinstance(value, bool):
-        return ("boolean", "")
+        return ("bool", "")
     elif isinstance(value, int):
         return ("long", "")
     elif isinstance(value, float):
@@ -618,29 +695,45 @@ def _json_value_to_idl_type(key: str, value, indent: int) -> tuple:
         return ("string", "// TODO: verify data type - null in sample")
     elif isinstance(value, list):
         if not value:
-            return ("list of string", "// TODO: verify data type - empty array in sample")
+            return ("string[]", "// TODO: verify data type - empty array in sample")
         first = value[0]
         if isinstance(first, bool):
-            return ("list of boolean", "")
+            return ("bool[]", "")
         elif isinstance(first, int):
-            return ("list of long", "")
+            return ("long[]", "")
         elif isinstance(first, float):
-            return ("list of double", "")
+            return ("double[]", "")
         elif isinstance(first, str):
             if _is_date_string(first):
-                return ("list of date", "")
-            return ("list of string", "")
+                return ("date[]", "")
+            return ("string[]", "")
         else:
-            return ("list of string", "// TODO: verify data type - empty array in sample")
+            return ("string[]", "// TODO: verify data type - empty array in sample")
     else:
         return ("string", "")
 
 
 def _write_types_idl(path: str, projectname: str, connectorid: str,
-                     request_fields: str, entity_fields: str):
-    """Generate the connectorid Types.model IDL file in the API datatypes package."""
+                     request_fields: str, entity_fields: str,
+                     request_structs: list = None,
+                     entity_structs: list = None):
+    """
+    Generate the connectorid Types.model IDL file in the API datatypes package.
+    Nested struct definitions are emitted as separate top-level structs.
+    The entity field inside DataRecord is named 'entityy' to avoid keyword clash.
+    """
     req_body    = f"\n{request_fields}\n" if request_fields else ""
     entity_body = f"\n{entity_fields}\n" if entity_fields else ""
+
+    extra_structs = []
+    for s in (request_structs or []):
+        if s not in extra_structs:
+            extra_structs.append(s)
+    for s in (entity_structs or []):
+        if s not in extra_structs:
+            extra_structs.append(s)
+
+    extra_block = ("\n\n" + "\n\n".join(extra_structs)) if extra_structs else ""
 
     content = (
         f"package com.telus.connector.{projectname}.api.datatypes\n"
@@ -650,9 +743,10 @@ def _write_types_idl(path: str, projectname: str, connectorid: str,
         f"struct {connectorid}Request {{{req_body}}}\n"
         f"\n"
         f"struct {connectorid}Entity {{{entity_body}}}\n"
+        f"{extra_block}\n"
         f"\n"
         f"struct {connectorid}DataRecord : AbstractDataRecord {{\n"
-        f"\t{connectorid}Entity entity\n"
+        f"\t{connectorid}Entity entityy\n"
         f"}}\n"
     )
 
@@ -671,7 +765,7 @@ def _write_osgi_xml(path: str, projectname: str, connectorid: str):
         f'    configuration-policy="require"\n'
         f'    immediate="true"\n'
         f'    name="com.telus.connector.{projectname}.{connectorid}">\n'
-        f'  <property name="target" value="com.telus.connector.{projectname}.SvcQualification"/>\n'
+        f'  <property name="target" value="com.telus.connector.{projectname}.{connectorid}"/>\n'
         f'  <implementation class="com.telus.connector.{projectname}.{connectorid}ConfigurationComponent"/>\n'
         f'  <service>\n'
         f'    <provide interface="com.telus.connector.{projectname}.I{connectorid}ConfigurationComponent"/>\n'
@@ -684,34 +778,57 @@ def _write_osgi_xml(path: str, projectname: str, connectorid: str):
 
 
 def _write_interface_config(path: str, projectname: str, connectorid: str):
-    """Write a stub Java interface for I<connectorid>ConfigurationComponent."""
-    content = (
-        f"package com.telus.connector.{projectname};\n"
-        f"public interface I{connectorid}ConfigurationComponent {{\n"
-        f"}}"
-    )
-    with open(path, "w") as f:
-        f.write(content)
+    """Generate I<connectorid>ConfigurationComponent.java
+    from ITemplateConfigurationComponent.java.txt.
+    Token replacements:
+      <projectname>  → projectname
+      <connectorid>  → connectorid
+    """
+    if not os.path.exists(TEMPLATE_ICONFIG_JAVA):
+        raise FileNotFoundError(
+            f"ITemplateConfigurationComponent.java.txt not found at: {TEMPLATE_ICONFIG_JAVA}"
+        )
 
+    with open(TEMPLATE_ICONFIG_JAVA, "r", encoding="utf-8-sig") as f:
+        content = f.read()
+
+    content = content.replace("<projectname>", projectname)
+    content = content.replace("<connectorid>",  connectorid)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"  Generated interface config: {path}")
 
 def _write_impl_config(path: str, projectname: str, connectorid: str):
-    """Write a stub Java class for <connectorid>ConfigurationComponent."""
-    content = (
-        f"package com.telus.connector.{projectname};\n"
-        f"public class {connectorid}ConfigurationComponent"
-        f" implements I{connectorid}ConfigurationComponent {{\n"
-        f"}}"
-    )
-    with open(path, "w") as f:
-        f.write(content)
+    """Generate <connectorid>ConfigurationComponent.java
+    from TemplateConfigurationComponent.java.txt.
+    Token replacements:
+      <projectname>  → projectname
+      <connectorid>  → connectorid
+    """
+    if not os.path.exists(TEMPLATE_CONFIG_JAVA):
+        raise FileNotFoundError(
+            f"TemplateConfigurationComponent.java.txt not found at: {TEMPLATE_CONFIG_JAVA}"
+        )
 
+    with open(TEMPLATE_CONFIG_JAVA, "r", encoding="utf-8-sig") as f:
+        content = f.read()
+
+    content = content.replace("<projectname>", projectname)
+    content = content.replace("<connectorid>",  connectorid)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"  Generated impl config: {path}")
 
 def _append_service_components(manifest_path, osgi_files):
-    """Append OSGI-INF filenames to Service-Component in MANIFEST.MF."""
-    entries = ",\n ".join([os.path.basename(f) for f in osgi_files])
+    """Append OSGI-INF/<filename> entries to Service-Component in MANIFEST.MF.
+    Each entry is prefaced with 'OSGI-INF/' so the result is e.g.:
+      Service-Component: OSGI-INF/com.telus.connector.inventory.tmf.CreateInventoryItem.xml
+    """
+    entries = ",\n ".join([f"OSGI-INF/{os.path.basename(f)}" for f in osgi_files])
     with open(manifest_path, "a") as f:
         f.write(f"\nService-Component: {entries}\n")
-
 
 def _write_connectors_xml(connectors_xml: str, projectname: str, connectors: list):
     """Generate OSGI-INF/connectors.xml with one connector block per connector definition."""
@@ -772,8 +889,14 @@ def _write_java_stub(path, projectname, connectorid, role):
     print(f"  Generated stub: {path}")
 
 
-def _write_connector_java(path: str, projectname: str, connectorid: str, http_method: str):
-    """Generate Connector.java from TemplateConnector.java.txt."""
+def _write_connector_java(path: str, projectname: str, connectorid: str,
+                          http_method: str, request_stem: str = None):
+    """Generate Connector.java from TemplateConnector.java.txt. Token replacements:
+      <projectname>    → projectname
+      <connectorid>    → connectorid
+      <requestExample> → request_stem (stem of requestExample filename,
+                         or connectorid if None/absent)
+    """
     import re
 
     if not os.path.exists(TEMPLATE_CONNECTOR_JAVA):
@@ -820,9 +943,13 @@ def _write_connector_java(path: str, projectname: str, connectorid: str, http_me
         else:
             output_lines.append(line)
 
+    # Safe fallback for <requestExample> if no requestExample provided
+    req_stem = request_stem if request_stem else connectorid
+
     content = "".join(output_lines)
-    content = content.replace("<projectname>", projectname)
-    content = content.replace("<connectorid>", connectorid)
+    content = content.replace("<projectname>",    projectname)
+    content = content.replace("<connectorid>",    connectorid)
+    content = content.replace("<requestExample>", req_stem)
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -873,7 +1000,6 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
     Recursively generates separate POJO files for nested objects and lists of objects,
     writing them to model_dir. Discovered nested class names are appended to nested_classes
     so the caller can build the correct import statements.
-
     Type mapping:
       bool              -> boolean
       int               -> long
@@ -881,9 +1007,9 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
       str (date)        -> Date
       str               -> String
       None              -> String  (with TODO comment)
-      list of objects   -> List<SingularClassName>  (generates SingularClassNamePojo.java)
+      list of objects   -> List<SingularClassNamePojo>  (generates SingularClassNamePojo.java)
       list (other)      -> List<String>
-      dict              -> ClassName  (generates ClassNamePojo.java)
+      dict              -> ClassNamePojo  (generates ClassNamePojo.java)
     """
     if isinstance(data, list):
         data = data[0] if data and isinstance(data[0], dict) else {}
@@ -918,7 +1044,7 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
                 # List of objects — singularize key for class name
                 singular_name = _singularize(key).capitalize()
                 class_name    = f"{singular_name}Pojo"
-                java_type     = f"List<{singular_name}>"
+                java_type     = f"List<{singular_name}Pojo>"
                 # Collect all keys across all elements (best non-null per key)
                 merged = {}
                 for item in value:
@@ -926,7 +1052,6 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
                         for k, v in item.items():
                             if k not in merged or merged[k] is None:
                                 merged[k] = v
-                # Recursively write the nested POJO file
                 nested_path = os.path.join(model_dir, f"{class_name}.java")
                 _write_pojo_java(
                     path        = nested_path,
@@ -942,7 +1067,6 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
                 java_type = "List<String>"
                 comment   = " // TODO: verify data type - empty array in sample"
             else:
-                # List of primitives
                 first = value[0]
                 if isinstance(first, bool):
                     java_type = "List<Boolean>"
@@ -956,9 +1080,8 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
                     java_type = "List<String>"
 
         elif isinstance(value, dict):
-            # Nested object — use capitalized key as class name
-            class_name = f"{cap_key}Pojo"
-            java_type  = cap_key
+            class_name  = f"{cap_key}Pojo"
+            java_type   = f"{cap_key}Pojo"
             nested_path = os.path.join(model_dir, f"{class_name}.java")
             _write_pojo_java(
                 path        = nested_path,
@@ -982,28 +1105,19 @@ def _json_to_pojo_fields(data, projectname: str, model_dir: str,
 
     return "\n".join(fields) + "\n\n" + "\n\n".join(methods)
 
+
 def _write_pojo_java(path: str, projectname: str, class_name: str,
                      json_path: str, label: str, data: dict = None):
     """
     Generate a POJO Java class in model/ from either a JSON example file (json_path)
     or a pre-parsed dict (data). Nested objects and lists of objects are recursively
     written as separate POJO files in the same directory.
-
-    Parameters:
-      path        : output file path
-      projectname : used for the package declaration
-      class_name  : Java class name (e.g. "SampleResponsePojo", "OutagePojo")
-      json_path   : path to JSON example file — used when data is None
-      label       : description for log/warn messages
-      data        : pre-parsed dict — used for recursively generated nested POJOs;
-                    when provided, json_path is ignored
     """
     model_dir      = os.path.dirname(path)
-    nested_classes = []   # collects names of nested POJO classes generated
+    nested_classes = []
     pojo_fields    = ""
 
     if data is not None:
-        # Called recursively with pre-parsed data — no file to read
         pojo_fields = _json_to_pojo_fields(data, projectname, model_dir, nested_classes)
         print(f"  [POJO] Generated nested class: '{class_name}'")
 
@@ -1019,13 +1133,12 @@ def _write_pojo_java(path: str, projectname: str, class_name: str,
         if json_path:
             print(f"  [WARN] {label} file not found or empty: {json_path}")
 
-    # ── Build import block ──────────────────────────────────────────────────────
+    # Build import block
     import_lines = []
-    if "Date"    in pojo_fields:
+    if "Date"  in pojo_fields:
         import_lines.append("import java.util.Date;")
-    if "List<"   in pojo_fields:
+    if "List<" in pojo_fields:
         import_lines.append("import java.util.List;")
-    # Import each recursively generated nested POJO class
     for nc in nested_classes:
         import_lines.append(f"import com.telus.connector.{projectname}.model.{nc}Pojo;")
 
@@ -1046,67 +1159,55 @@ def _write_pojo_java(path: str, projectname: str, class_name: str,
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"  Generated POJO: {path}")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    print(f"  Generated POJO: {path}")
 
 
-def _json_to_conversion_logic(json_path: str, source_var: str = "pojo") -> str:
+def _json_to_conversion_logic(json_path: str, source_var: str = "pojo") -> tuple:
     """
     Read a JSON example file and generate complete one-to-one mapping code,
     including private helper methods for all nested objects and lists of objects.
 
-    For to<connectorid>Entity()  — source_var = "pojo"    (responseExample JSON)
-    For to<connectorid>Pojo()    — source_var = "request" (requestExample JSON)
-
-    Returns a string containing:
-      - The body lines for the top-level mapping method
-      - Private helper convert methods for every nested struct/list-of-struct
-
-    If the file is missing, empty, or unparseable, returns an empty string.
+    Returns a tuple: (top_level_body: str, helpers: str, nested_api_types: list)
+      - top_level_body  : the rv.setXxx(...) lines only — injected into the TODO
+                          marker inside the method body. The template already
+                          provides 'return rv;' and the closing '}'.
+      - helpers         : private convertToXxx() methods — injected before the
+                          class closing '}'.
+      - nested_api_types: struct names needing:
+                          import com.telus.connector.<projectname>.api.datatypes.<Name>;
+    If the file is missing/empty/unparseable, returns ("", "", []).
     """
     if not json_path or not os.path.exists(json_path) or os.path.getsize(json_path) == 0:
-        return ""
+        return "", "", []
 
     try:
         with open(json_path, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
     except (json.JSONDecodeError, OSError):
-        return ""
+        return "", "", []
 
-    # Unwrap list root to first element
     if isinstance(data, list):
         data = data[0] if data and isinstance(data[0], dict) else {}
 
     if not isinstance(data, dict):
-        return ""
+        return "", "", []
 
-    # Collect all generated helper methods (deduplicated by struct name)
-    helper_methods = {}   # struct_name -> method_source_string
+    helper_methods   = {}  # struct_name -> method_source_string (ordered, deduped)
+    nested_api_types = []  # struct names that need api.datatypes imports
 
     def _map_fields(obj: dict, src: str) -> str:
-        """
-        Generate rv.setXxx(...) lines for each field in obj.
-        src is the variable name to call getters on.
-        Appends helper methods to helper_methods as a side-effect.
-        Returns the body lines as a string (double-tab indented).
-        """
         lines = []
         for key, value in obj.items():
             cap_key = key[0].upper() + key[1:] if key else key
 
             if isinstance(value, dict):
-                # Nested object → generate a convertTo<Key>() helper
-                struct_name = cap_key          # e.g. "Meta"
-                pojo_class  = f"{cap_key}Pojo" # e.g. "MetaPojo"
+                struct_name = cap_key
+                pojo_class  = f"{cap_key}Pojo"
                 _ensure_helper(struct_name, pojo_class, value)
                 lines.append(f"\t\trv.set{cap_key}(convertTo{struct_name}({src}.get{cap_key}()));")
 
             elif isinstance(value, list) and value and isinstance(value[0], dict):
-                # List of objects → generate a convertTo<Singular>() helper + loop
-                singular      = _singularize(key).capitalize()  # e.g. "Outage"
-                pojo_class    = f"{singular}Pojo"               # e.g. "OutagePojo"
-                # Merge all elements to get the full field set
+                singular   = _singularize(key).capitalize()
+                pojo_class = f"{singular}Pojo"
                 merged = {}
                 for item in value:
                     if isinstance(item, dict):
@@ -1121,44 +1222,32 @@ def _json_to_conversion_logic(json_path: str, source_var: str = "pojo") -> str:
                 )
 
             else:
-                # Primitive, date, string, list of primitives → direct mapping
                 lines.append(f"\t\trv.set{cap_key}({src}.get{cap_key}());")
 
         return "\n".join(lines)
 
     def _ensure_helper(struct_name: str, pojo_class: str, obj: dict):
-        """
-        Generate a private convertTo<StructName>() helper method if not already done.
-        Recursively processes nested fields inside obj.
-        """
         if struct_name in helper_methods:
-            return  # already generated
-
-        # Reserve slot immediately to prevent infinite recursion on self-referencing types
-        helper_methods[struct_name] = ""
-
+            return
+        helper_methods[struct_name] = ""  # reserve slot to prevent infinite recursion
+        if struct_name not in nested_api_types:
+            nested_api_types.append(struct_name)  # track for import generation
         inner_body = _map_fields(obj, "pojo")
-
         method = (
             f"\tprivate {struct_name} convertTo{struct_name}({pojo_class} pojo) {{\n"
             f"\t\tif (pojo == null) return null;\n"
-            f"\t\t{struct_name} rv = new {struct_name}();\n"
+            f"\t\t{struct_name} rv = {struct_name}.create();\n"  # use .create() not new
             f"{inner_body}\n"
             f"\t\treturn rv;\n"
             f"\t}}"
         )
         helper_methods[struct_name] = method
 
-    # Generate the top-level body lines
     top_level_body = _map_fields(data, source_var)
+    helpers_str    = "\n\n".join(m for m in helper_methods.values() if m)
 
-    # Assemble: top-level body + all helper methods
-    result_parts = [top_level_body]
-    for method_src in helper_methods.values():
-        if method_src:
-            result_parts.append(method_src)
+    return top_level_body, helpers_str, nested_api_types
 
-    return "\n\n".join(result_parts)
 
 def _write_converter_java(path: str, projectname: str, connectorid: str,
                           request_example_stem: str, response_example_stem: str,
@@ -1166,21 +1255,24 @@ def _write_converter_java(path: str, projectname: str, connectorid: str,
     """
     Generate <connectorid>Converter.java from TemplateConverter.java.txt.
 
-    Token replacements:
-      <projectname>     -> projectname
-      <connectorid>     -> connectorid
-      <requestExample>  -> request_example_stem (stem of requestExample filename,
-                           or connectorid if None)
-      <responseExample> -> response_example_stem (stem of responseExample filename)
-
-    TODO replacements (in order of occurrence in the template):
-      1st // TODO: implement the conversion logic here
-          -> inside to<connectorid>Entity(): rv.setXxx(pojo.getXxx());
-             derived from responseExample JSON top-level keys
-      2nd // TODO: implement the conversion logic here
-          -> inside to<connectorid>Pojo(): rv.setXxx(request.getXxx());
-             derived from requestExample JSON top-level keys
+    Processing steps:
+      1. Read template (UTF-8, BOM-safe).
+      2. Process '// ConnectorGenerator: if <requestExample> != null' block:
+           - If request_example_stem is present  → keep body, strip directive lines.
+           - If request_example_stem is absent    → strip entire block including body.
+      3. Apply token replacements:
+           <projectname>     → projectname
+           <connectorid>     → connectorid
+           <requestExample>  → request_example_stem (or connectorid if None)
+           <responseExample> → response_example_stem
+      4. Replace 1st TODO marker with entity body lines (from responseExample).
+      5. Replace 2nd TODO marker with pojo body lines (from requestExample).
+      6. Inject helper methods (convertToXxx) before the class closing '}'.
+      7. Inject missing api.datatypes imports after the last existing import line.
+      8. Write output file (UTF-8).
     """
+    import re
+
     if not os.path.exists(TEMPLATE_CONVERTER_JAVA):
         raise FileNotFoundError(
             f"TemplateConverter.java.txt not found at: {TEMPLATE_CONVERTER_JAVA}"
@@ -1189,7 +1281,26 @@ def _write_converter_java(path: str, projectname: str, connectorid: str,
     with open(TEMPLATE_CONVERTER_JAVA, "r", encoding="utf-8-sig") as f:
         content = f.read()
 
-    # If no requestExample, use connectorid as a safe fallback for the token
+    # ── Step 2: process '// ConnectorGenerator: if <requestExample> != null' block ──
+    re_cg_if    = re.compile(r'[ \t]*//\s*ConnectorGenerator:\s*if\s+<requestExample>\s*!=\s*null[ \t]*\r?\n')
+    re_cg_endif = re.compile(r'[ \t]*//\s*ConnectorGenerator:\s*end\s+if[ \t]*\r?\n?')
+
+    if_match    = re_cg_if.search(content)
+    endif_match = re_cg_endif.search(content)
+
+    if if_match and endif_match and if_match.start() < endif_match.start():
+        block_start = if_match.start()
+        block_end   = endif_match.end()
+        block_body  = content[if_match.end():endif_match.start()]  # lines between directives
+
+        if request_example_stem:
+            # Keep the body, strip only the directive lines
+            content = content[:block_start] + block_body + content[block_end:]
+        else:
+            # Strip the entire block including body
+            content = content[:block_start] + content[block_end:]
+
+    # ── Step 3: token replacements ──
     req_stem  = request_example_stem  if request_example_stem  else connectorid
     resp_stem = response_example_stem if response_example_stem else connectorid
 
@@ -1198,25 +1309,58 @@ def _write_converter_java(path: str, projectname: str, connectorid: str,
     content = content.replace("<requestExample>",  req_stem)
     content = content.replace("<responseExample>", resp_stem)
 
-    todo_marker = "// TODO: implement the conversion logic here"
+    todo_marker   = "// TODO: implement the conversion logic here"
+    all_api_types = []
 
-    # ── 1st TODO: to<connectorid>Entity() — maps pojo → rv (from responseExample) ──
-    entity_logic = _json_to_conversion_logic(resp_json_path, source_var="pojo")
-    if entity_logic:
-        content = content.replace(todo_marker, entity_logic, 1)
+    # ── Step 4: 1st TODO — entity body lines from responseExample ──
+    entity_body, entity_helpers, entity_api_types = _json_to_conversion_logic(
+        resp_json_path, source_var="pojo"
+    )
+    all_api_types.extend(entity_api_types)
+
+    if entity_body:
+        content = content.replace(todo_marker, entity_body, 1)
         print(f"  [Converter] Injected entity conversion logic "
-              f"({len(entity_logic.splitlines())} fields) from responseExample")
+              f"({len(entity_body.splitlines())} lines) from responseExample")
     else:
         print(f"  [Converter] No responseExample JSON — 1st TODO retained")
 
-    # ── 2nd TODO: to<connectorid>Pojo() — maps request → rv (from requestExample) ──
-    pojo_logic = _json_to_conversion_logic(req_json_path, source_var="request")
-    if pojo_logic:
-        content = content.replace(todo_marker, pojo_logic, 1)
+    # ── Step 5: 2nd TODO — pojo body lines from requestExample ──
+    pojo_body, pojo_helpers, pojo_api_types = _json_to_conversion_logic(
+        req_json_path, source_var="request"
+    )
+    all_api_types.extend(pojo_api_types)
+
+    if pojo_body:
+        content = content.replace(todo_marker, pojo_body, 1)
         print(f"  [Converter] Injected pojo conversion logic "
-              f"({len(pojo_logic.splitlines())} fields) from requestExample")
+              f"({len(pojo_body.splitlines())} lines) from requestExample")
     else:
         print(f"  [Converter] No requestExample JSON — 2nd TODO retained")
+
+    # ── Step 6: inject helper methods before the class's final closing '}' ──
+    all_helpers = "\n\n".join(h for h in [entity_helpers, pojo_helpers] if h)
+    if all_helpers:
+        last_brace_idx = content.rfind("\n}")
+        if last_brace_idx != -1:
+            content = (content[:last_brace_idx]
+                       + "\n\n"
+                       + all_helpers
+                       + content[last_brace_idx:])
+
+    # ── Step 7: inject api.datatypes imports for nested struct types ──
+    if all_api_types:
+        import_lines = "\n".join(
+            f"import com.telus.connector.{projectname}.api.datatypes.{t};"
+            for t in all_api_types
+        )
+        # Insert after the last "import ...;" line in the file
+        last_import_match = None
+        for m in re.finditer(r'^import .*;', content, re.MULTILINE):
+            last_import_match = m
+        if last_import_match:
+            insert_pos = last_import_match.end()
+            content = content[:insert_pos] + "\n" + import_lines + content[insert_pos:]
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)

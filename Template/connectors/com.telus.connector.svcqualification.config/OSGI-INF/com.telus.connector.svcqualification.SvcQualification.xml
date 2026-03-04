@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.2.0" activate="configure" configuration-pid="com.telus.connector.svcqualification.SvcQualification.rest" configuration-policy="require" immediate="true" name="com.telus.connector.svcqualification.SvcQualification">
-   <property name="target" value="com.telus.connector.svcqualification.SvcQualification"/>
-  <implementation class="com.telus.connector.svcqualification.SvcQualificationConfigurationComponent"/>
-  <service>
-     <provide interface="com.telus.connector.svcqualification.ISvcQualificationConfigurationComponent"/>
-  </service>
-</scr:component>

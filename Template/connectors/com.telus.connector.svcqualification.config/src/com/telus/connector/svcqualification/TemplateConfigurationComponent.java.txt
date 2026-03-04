@@ -1,4 +1,4 @@
-package com.telus.connector.svcqualification;
+package com.telus.connector.<projectname>;
 
 import java.util.Map;
 
@@ -15,19 +15,19 @@ import com.solvatio.connector.rest.common.config.RestConnectorConfigurationCompo
 import com.solvatio.connector.rest.common.config.jersey.JerseyConnectorConfiguration;
 import com.solvatio.connector.rest.common.logging.SLF4JFeature;
 
-@Component(service = ISvcQualificationConfigurationComponent.class, 
-			immediate = true, name = "com.telus.connector.svcqualification.SvcQualification", 
-			property = "target=com.telus.connector.svcqualification.SvcQualification", 
-			configurationPid = "com.telus.connector.svcqualification.SvcQualification.rest", 
+@Component(service = I<connectorid>ConfigurationComponent.class, 
+			immediate = true, name = "com.telus.connector.<projectname>.<connectorid>", 
+			property = "target=com.telus.connector.<projectname>.<connectorid>", 
+			configurationPid = "com.telus.connector.<projectname>.<connectorid>.rest", 
 			configurationPolicy = ConfigurationPolicy.REQUIRE)
-public class SvcQualificationConfigurationComponent extends RestConnectorConfigurationComponent implements ISvcQualificationConfigurationComponent {
+public class <connectorid>ConfigurationComponent extends RestConnectorConfigurationComponent implements I<connectorid>ConfigurationComponent {
 
-	public static final String ID = "com.telus.connector.svcqualification.SvcQualification";
-	public static final String CONFIGURATION_PID = SvcQualificationConfigurationComponent.ID
+	public static final String ID = "com.telus.connector.<projectname>.<connectorid>";
+	public static final String CONFIGURATION_PID = <connectorid>ConfigurationComponent.ID
 			+ RestConnectorConfigurationComponent.POSTFIX;
 	private String targetEnv;
 
-	public SvcQualificationConfigurationComponent() {
+	public <connectorid>ConfigurationComponent() {
 		super(ID);
 	}
 

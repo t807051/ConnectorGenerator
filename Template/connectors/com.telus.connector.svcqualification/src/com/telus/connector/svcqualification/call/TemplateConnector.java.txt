@@ -10,6 +10,8 @@ import javax.ws.rs.core.MediaType;
 
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iisy.solvatio.connector.AsyncConnectorCallback;
 import com.iisy.solvatio.connector.ConnectorError;
 import com.iisy.solvatio.connector.ConnectorException;
@@ -17,6 +19,10 @@ import com.solvatio.connector.rest.common.connector.AsyncRestConnector;
 import com.telus.connector.<projectname>.api.datatypes.<connectorid>DataRecord;
 import com.telus.connector.<projectname>.api.datatypes.<connectorid>Entity;
 import com.telus.connector.<projectname>.api.datatypes.<connectorid>Request;
+// ConnectorGenerator: if <httpMethod> == POST
+import com.telus.connector.<projectname>.converter.<connectorid>Converter;
+import com.telus.connector.inventory.tmf.model.<requestExample>Pojo;
+// ConnectorGenerator: end if
 
 
 public class <connectorid>Connector extends AsyncRestConnector<<connectorid>DataRecord> {
@@ -34,14 +40,28 @@ public class <connectorid>Connector extends AsyncRestConnector<<connectorid>Data
 		logger.info("<connectorid>... ");
 		
 		<connectorid>Request request = (<connectorid>Request) args.get("parameters");
-		if ((request == null) || (request.getLpdsId() == null)) {
-			logger.error("Missing Parameter : lpdsId. ");
-			callback.failed(new ConnectorError("Missing Parameter : lpdsId"));
+		if (request == null) {
+			callback.failed(new ConnectorError("Missing Parameter"));
 		}
+
+        String requestString = null;
+
+		// ConnectorGenerator: if <httpMethod> == POST
+				<connectorid>Request requestParam = (<connectorid>Request) args.get("parameter");
+        		<connectorid>Converter converter = new <connectorid>Converter();
+        		<requestExample>Pojo req = converter.to<connectorid>Pojo(requestParam);
+        		ObjectMapper mapper = new ObjectMapper();
+        		try {
+        		    requestString = mapper.writeValueAsString(req);
+        		} catch (JsonProcessingException e) {
+        		    logger.error("Failed to convert request to JSON string. ", e);
+        		    callback.failed(new ConnectorError("Failed to convert request to JSON string: " + e.getMessage()));
+        		    return;
+        		}
+		// ConnectorGenerator: end if
 
 		try {
 			Builder requestBuilder = this.target
-				.path(request.getLpdsId())
 				.request(MediaType.APPLICATION_JSON);
 	        
 	        if (targetEnv != null && !targetEnv.isEmpty()) {
@@ -54,17 +74,17 @@ public class <connectorid>Connector extends AsyncRestConnector<<connectorid>Data
 				// ConnectorGenerator: if <httpMethod> == GET
 				.async().method("GET", Entity.entity(null, MediaType.APPLICATION_JSON_TYPE),
 				// ConnectorGenerator: else if <httpMethod> == POST
-				.async().method("POST", Entity.entity(requestString, MediaType.APPLICATION_JSON_TYPE), new InvocationCallback<<connectorid>DataRecord>() {
+				.async().method("POST", Entity.entity(requestString, MediaType.APPLICATION_JSON_TYPE),
 				// ConnectorGenerator: else if <httpMethod> == PATCH
 				.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
-				.async().method("PATCH", Entity.entity(requestBody, MediaType.APPLICATION_JSON_TYPE),
+				.async().method("PATCH", Entity.entity(requestString, MediaType.APPLICATION_JSON_TYPE),
 				// ConnectorGenerator: end if
 
 						new InvocationCallback<<connectorid>Entity>() {
 							@Override
 							public void completed(<connectorid>Entity entity) {
 								<connectorid>DataRecord dataRecord = <connectorid>DataRecord.create();
-								dataRecord.setSvcQualificationEntity(entity);
+								dataRecord.setEntityy(entity);
 								callback.complete(dataRecord);
 							}
 
@@ -80,8 +100,5 @@ public class <connectorid>Connector extends AsyncRestConnector<<connectorid>Data
 			logger.error("Connector call failed. ", cause);
 			callback.failed(new ConnectorError(cause.getMessage()));
 		}
-
-		
 	}
-
 }

@@ -13,7 +13,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.solvatio.connector.rest.common.domaininterface.conversion.ConversionException;
 import com.solvatio.connector.rest.common.domaininterface.conversion.Converter;
-import com.telus.connector.<projectname>..model.*;
+import com.telus.connector.<projectname>.api.datatypes.<connectorid>Entity;
+import com.telus.connector.<projectname>.api.datatypes.<connectorid>Request;
+import com.telus.connector.<projectname>.exception.<connectorid>ConversionException;
+import com.telus.connector.<projectname>.model.*;
 
 public class <connectorid>Converter implements Converter<JsonNode, <connectorid>Entity>{
 	private final ObjectMapper mapper;
@@ -60,13 +63,14 @@ public class <connectorid>Converter implements Converter<JsonNode, <connectorid>
         return rv;
 	}
 
+// ConnectorGenerator: if <requestExample> != null
     /**
         * Convert a <connectorid>Request to a <requestExample>Pojo
         * Implement this method only if <requestExample>Pojo exists.
         * @param request the <connectorid>Request to convert
         * @return the converted <requestExample>Pojo
         */
-	private <requestExample>Pojo to<connectorid>Pojo(<connectorid>Request request) {
+	public <requestExample>Pojo to<connectorid>Pojo(<connectorid>Request request) {
 	    if (request == null)
             return null;
         <requestExample>Pojo rv = new <requestExample>Pojo();
@@ -75,7 +79,7 @@ public class <connectorid>Converter implements Converter<JsonNode, <connectorid>
 
         return rv;
 	}
-
+// ConnectorGenerator: end if
 
 	/**
 	 * Return a safe iterable. If the input iterable is null, this method returns an empty iterable instead.
@@ -97,7 +101,7 @@ public class <connectorid>Converter implements Converter<JsonNode, <connectorid>
     	if (date != null && date != ""){
     		try {
     			Locale locale = Locale.CANADA;
-				SimpleDateFormat format = new SimpleDateFormat(DATE_FORMAT, locale);
+				SimpleDateFormat format = new SimpleDateFormat(CUSTOM_FORMAT, locale);
     			Date parsedDate = format.parse(date);
     			
     			return parsedDate;
