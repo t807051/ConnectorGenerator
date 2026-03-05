@@ -229,6 +229,16 @@ For each of the following build subdirectories under $BUILDDIR:
     Replace "svcqualification" with <projectname>
     If file not found: print [WARN] and skip.
 
+Additionally, for the p2 directory:
+  com.telus.connector.<projectname>.p2\category.xml  (if it exists)
+    Replace "svcqualification" with <projectname>
+    If file not found: print [WARN] and skip.
+
+Additionally, for the feature directory:
+  com.telus.connector.<projectname>.feature\feature.xml  (if it exists)
+    Replace "svcqualification" with <projectname>
+    If file not found: print [WARN] and skip.
+
 --------------------------------------------------------------------------------
 7. STEP 3 — EDIT API PROJECT FILES
 --------------------------------------------------------------------------------
@@ -671,6 +681,14 @@ For each <connectorid>, generate the following files under:
       3. Write the output file (UTF-8).
     Output class name: <connectorid>ConversionException
 
+  After all connectors have been processed, delete the following copied template
+  .java.txt files from the impl project src directories:
+    src\com\telus\connector\<projectname>\call\TemplateConnector.java.txt
+    src\com\telus\connector\<projectname>\converter\TemplateConverter.java.txt
+    src\com\telus\connector\<projectname>\exception\TemplateException.java.txt
+    src\com\telus\connector\<projectname>\factories\TemplateFactory.java.txt
+  If a file is not found: print [WARN] and continue.
+
   Note: src path uses dots-as-separators rule for <projectname>.
 
 --------------------------------------------------------------------------------
@@ -684,7 +702,9 @@ main()
  │                                         pom.xml, MANIFEST.MF + strip
  │                                         pre-existing Service-Component entries
  ├── edit_build_files()                 ← Token replace in all build subdirectory
- │                                         .project & pom.xml files
+ │                                         .project & pom.xml files;
+ │                                         token replace in p2\category.xml;
+ │                                         token replace in feature\feature.xml
  ├── edit_api_files()                   ← Token replace + rename src package in api project
  ├── edit_impl_files()                  ← Token replace in impl .project, pom.xml,
  │                                         MANIFEST.MF; rename src package folder;
@@ -705,25 +725,31 @@ main()
  │                                         (flat top-level structs, arrays,
  │                                          bool type, entityy field name)
  └── generate_impl_per_connector()      ← Per connector:
-                                           call\<connectorid>Connector.java
-                                             (from TemplateConnector.java.txt;
-                                              tokens: <projectname>, <connectorid>,
-                                              <requestExample>)
-                                           model\<requestStem>Pojo.java (if requestExample)
-                                           model\<responseStem>Pojo.java (if responseExample)
-                                             + recursive nested <ClassName>Pojo.java files
-                                             (field types use full Pojo suffix:
-                                              List<OutagePojo>, MetaPojo, etc.)
-                                           converter\<connectorid>Converter.java
-                                             (from TemplateConverter.java.txt;
-                                              ConnectorGenerator if/end-if block
-                                              controls to<connectorid>Pojo() inclusion;
-                                              TODO markers replaced with body lines only;
-                                              helper methods injected before class '};
-                                              api.datatypes imports injected for nested
-                                              struct types using .create() factory)
-                                           factories\<connectorid>Factory.java (from template)
-                                           exception\<connectorid>ConversionException.java
-                                             (from template)
+                                            call\<connectorid>Connector.java
+                                              (from TemplateConnector.java.txt;
+                                               tokens: <projectname>, <connectorid>,
+                                               <requestExample>)
+                                            model\<requestStem>Pojo.java (if requestExample)
+                                            model\<responseStem>Pojo.java (if responseExample)
+                                              + recursive nested <ClassName>Pojo.java files
+                                              (field types use full Pojo suffix:
+                                               List<OutagePojo>, MetaPojo, etc.)
+                                            converter\<connectorid>Converter.java
+                                              (from TemplateConverter.java.txt;
+                                               ConnectorGenerator if/end-if block
+                                               controls to<connectorid>Pojo() inclusion;
+                                               TODO markers replaced with body lines only;
+                                               helper methods injected before class '};
+                                               api.datatypes imports injected for nested
+                                               struct types using .create() factory)
+                                            factories\<connectorid>Factory.java (from template)
+                                            exception\<connectorid>ConversionException.java
+                                              (from template)
+                                            + after all connectors: delete
+                                                TemplateConnector.java.txt,
+                                                TemplateConverter.java.txt,
+                                                TemplateException.java.txt,
+                                                TemplateFactory.java.txt
+                                                from their respective src subdirs
 
 ================================================================================

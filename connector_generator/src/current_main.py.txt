@@ -161,8 +161,9 @@ def edit_config_files(projectname: str):
 # ─────────────────────────────────────────────
 
 def edit_build_files(projectname: str):
-    """Edit .project and pom.xml in each build project subdirectory,
-    the same way as the config project files."""
+    """Edit .project and pom.xml in each build project subdirectory.
+    Also edits category.xml in the p2 directory and feature.xml in the
+    feature directory, replacing 'svcqualification' with <projectname>."""
     build_suffixes = [
         "api.esa",
         "build",
@@ -184,6 +185,21 @@ def edit_build_files(projectname: str):
         else:
             print(f"[WARN] pom.xml not found, skipping: {pom_file}")
 
+    # Edit category.xml in the p2 directory
+    category_xml = os.path.join(BUILDDIR, f"com.telus.connector.{projectname}.p2",
+                                "category.xml")
+    if os.path.exists(category_xml):
+        _replace_in_file(category_xml, "svcqualification", projectname)
+    else:
+        print(f"[WARN] category.xml not found, skipping: {category_xml}")
+
+    # Edit feature.xml in the feature directory
+    feature_xml = os.path.join(BUILDDIR, f"com.telus.connector.{projectname}.feature",
+                               "feature.xml")
+    if os.path.exists(feature_xml):
+        _replace_in_file(feature_xml, "svcqualification", projectname)
+    else:
+        print(f"[WARN] feature.xml not found, skipping: {feature_xml}")
 
 # ─────────────────────────────────────────────
 # 5. EDIT API FILES
@@ -376,6 +392,8 @@ def generate_impl_per_connector(projectname: str, connectors: list, definition_f
                                                   otherwise a generic stub
       - factories/<connectorid>Factory.java       from TemplateFactory.java.txt
       - exception/<connectorid>ConversionException.java from TemplateException.java.txt
+    After all connectors are processed, deletes the copied template .java.txt files
+    from the impl project src directories.
     """
     impl_dir       = os.path.join(CONNECTORDIR, f"com.telus.connector.{projectname}")
     src_base       = os.path.join(impl_dir, "src", "com", "telus", "connector",
@@ -470,6 +488,19 @@ def generate_impl_per_connector(projectname: str, connectors: list, definition_f
             connectorid = cid
         )
 
+    # ── Delete copied template .java.txt files after all connectors are processed ──
+    template_txt_files = [
+        os.path.join(src_base, "call",      "TemplateConnector.java.txt"),
+        os.path.join(src_base, "converter", "TemplateConverter.java.txt"),
+        os.path.join(src_base, "exception", "TemplateException.java.txt"),
+        os.path.join(src_base, "factories", "TemplateFactory.java.txt"),
+    ]
+    for txt_path in template_txt_files:
+        if os.path.exists(txt_path):
+            os.remove(txt_path)
+            print(f"  Deleted template file: {txt_path}")
+        else:
+            print(f"  [WARN] Template file not found for deletion: {txt_path}")
 
 # ─────────────────────────────────────────────
 # 10. MAIN ORCHESTRATOR
