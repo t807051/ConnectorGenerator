@@ -1,0 +1,121 @@
+# CONNECTOR TITLE (developer: replace with proper title)
+
+## Connector Specification
+
+## Insight10
+
+### v1.0
+
+#### This document is in **markdown** format. Use a markdown editor to view and edit this document.
+
+This document was generated using the SpecGenerator, part of ConnectorGenerator tool.
+https://github.com/t807051/ConnectorGenerator
+
+
+// SpecGenerator: Insert pagebreak
+
+# Table of Contents
+
+// SpecGenerator: Insert links to document sections
+
+## Document History
+
+| Author | Stage | Version | Description | Date |
+| ------ | ----- | ------- | ----------- | ---- |
+|        |       | 1.0     | Initial     | //SpecGenerator: insert today's date in yyyy-mm-dd format |
+|        |       |         |             |      |
+
+// SpecGenerator: Insert pagebreak
+
+# Connector Description
+// SpecGenerator: Insert <projectdescription>
+
+## Connector Endpoints
+
+| Environment | Url | Authentication |
+| ----------- | --- | -------------- |
+| // SpecGenerator: Insert <hosts.env>          | Insert <hosts.hostname>   | Insert <hosts.authentication> |
+
+## Nodemanager Definitions
+// SpecGenerator: define nodemanager definition for basic authentication and kong authentication, then insert the appropriate nodemanager definition based on hosts.authentication value for each host in hosts.env
+basic authentication nodemanager definition:
+	<service serviceId="com.telus.connector.<projectname>.<connectorid>.rest">
+ 	    <property name="endpoint" type="string"><hosts.hostname>/<apiPath></property>
+	    <property name="password" type="string">Oa0rDOv9oP+P14jitaDWgf3/woLmsq14+oNU8NEORxN+hv2+2six76JPm1WvbGzwSJ1V6kOI1E5SH0+23PsJkw==</property>
+	    <property name="authenticationType" type="string">basic</property>
+	    <property name="timeout" type="int">4000</property>
+	    <property name="username" type="string">APP_SOLVATIO</property>
+    </service>
+kong authentication nodemanager definition:
+    <service serviceId="com.telus.connector.<projectname>.<connectorid>.rest">
+ 	    <property name="endpoint" type="string"><hosts.hostname>/<apiPath></property>
+        <property name="authenticationType" type="string">kong</property>
+        <property name="timeout" type="int">4000</property>
+    </service>
+
+do for each host in hosts.env
+### <hosts.env>
+    do for each connectorid in connectorids
+    ### <connectorid>
+        if hosts.authentication == "basic" then insert nodemanager definition for basic authentication
+        else if hosts.authentication == "kong" then insert nodemanager definition for kong authentication
+
+// SpecGenerator: Insert pagebreak
+
+# Connector Definitions
+
+// SpecGenerator: for each <connectorid>
+
+## \<connectorid\>
+
+Connector id: com.telus.connector.\<projectname\>.\<connectorid\>
+
+Service Id: com.telus.connector.\<projectname\>.\<connectorid\>.rest
+
+Description: // SpecGenerator: Insert <connectordescription>
+
+### Request Object
+
+// SpecGenerator: Insert \<requestExample\>Request object definition from IDL
+
+### Response Object
+
+// SpecGenerator: Insert \<responseExample\>Entity object definition from IDL
+
+// SpecGenerator: end for
+
+// SpecGenerator: Insert pagebreak
+
+# Appendix A: Sample Backend Request/Response
+Sample request and response messages from Backend System.
+
+// SpecGenerator: for each <connectorid>
+## serviceId: `com.telus.connector.<projectname>.<connectorid>.rest`
+
+path: <apiPath>
+
+### Request Message
+// SpecGenerator: Insert <requestExample>
+
+### Response
+// SpecGenerator: Insert <responseExample>
+
+// SpecGenerator: Insert pagebreak
+// SpecGenerator: end for loop
+
+# Additional Information
+
+Implementation Date: //SpecGenerator: insert today's date in yyyy-mm-dd format
+
+**Backend:**
+- BSA:
+- Service Developer:
+- Owner Manager:
+- API Document:
+
+**Service Assurance (InSight10):**
+- BSA: [Richard Cheng](mailto:richard.cheng@telus.com)
+- Connector Developer: [Daniel Koyanagi](mailto:daniel.koyanagi@telus.com)
+- Owner Manager: [Edgar Del Valle](mailto:edgar.delvalle@telus.com)
+
+End of Document

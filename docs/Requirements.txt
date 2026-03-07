@@ -11,31 +11,53 @@ definition of ONE connector project. A connector project consists of one or
 more connectors. JSON file structure:
 
 {
-  "projectname": "<projectname>",
+  "projectname":        "<projectname>",
+  "projectdescription": "<projectdescription>",
+  "hosts": [
+    {
+      "env":            "<environment label>",
+      "hostname":       "<base URL>",
+      "authentication": "<basic|kong>"
+    }
+  ],
   "connectors": [
     {
-      "connectorid":       "<connectorid>",
-      "inputClass":        "<inputClass>",
-      "entityClass":       "<entityClass>",
-      "dataRecordClass":   "<dataRecordClass>",
-      "apiPath":           "<apiPath>",
-      "httpMethod":        "<httpMethod>",
-      "requestExample":    "<requestExampleFilename>",
-      "responseExample":   "<responseExampleFilename>"
+      "connectorid":          "<connectorid>",
+      "connectordescription": "<connectordescription>",
+      "inputClass":           "<inputClass>",
+      "entityClass":          "<entityClass>",
+      "dataRecordClass":      "<dataRecordClass>",
+      "apiPath":              "<apiPath>",
+      "httpMethod":           "<httpMethod>",
+      "requestExample":       "<requestExampleFilename>",
+      "responseExample":      "<responseExampleFilename>"
     }
   ]
 }
 
 Field rules:
-  - <projectname>    : Either <sourceSystem> or <sourceSystem>.tmf
-                       Always lowercase. e.g. "inventory" or "inventory.tmf"
-  - <connectorid>    : Unique identifier for each connector within the project.
-                       Used to drive all generated file and class names.
-  - <inputClass>     : Name of the input/request class for this connector.
-  - <entityClass>    : Name of the entity class for this connector.
-  - <dataRecordClass>: Name of the data record class for this connector.
-  - <apiPath>        : REST API endpoint path. e.g. "/inventory/v1/items/{id}"
-  - <httpMethod>     : HTTP method. e.g. GET, POST, PUT, PATCH, DELETE
+  - <projectname>         : Either <sourceSystem> or <sourceSystem>.tmf
+                            Always lowercase. e.g. "inventory" or "inventory.tmf"
+  - <projectdescription>  : Optional free-text description of the connector project.
+                            Used in the generated spec document.
+                            Read via .get(); defaults to "" if absent.
+  - <hosts>               : Optional list of deployment environment entries.
+                            Each entry has:
+                              "env"            : Environment label (e.g. "NP", "PR")
+                              "hostname"       : Base URL (e.g. "http://hostname.com")
+                              "authentication" : "basic" or "kong"
+                            Read via .get(); defaults to [] if absent.
+                            Used in the generated spec document only.
+  - <connectorid>         : Unique identifier for each connector within the project.
+                            Used to drive all generated file and class names.
+  - <connectordescription>: Optional free-text description of the connector.
+                            Read via .get(); defaults to "" if absent.
+                            Used in the generated spec document only.
+  - <inputClass>          : Name of the input/request class for this connector.
+  - <entityClass>         : Name of the entity class for this connector.
+  - <dataRecordClass>     : Name of the data record class for this connector.
+  - <apiPath>             : REST API endpoint path. e.g. "/inventory/v1/items/{id}"
+  - <httpMethod>          : HTTP method. e.g. GET, POST, PUT, PATCH, DELETE
   - <requestExampleFilename>  : Filename of the request example JSON file,
                                 located in the same directory as the definition
                                 file. Used to generate IDL fields for
@@ -54,7 +76,8 @@ Validation rules:
   - "connectors" field is required and must be a non-empty list.
   - Each connector entry must contain all six core fields:
     connectorid, inputClass, entityClass, dataRecordClass, apiPath, httpMethod.
-  - requestExample and responseExample are optional fields (read via .get()).
+  - projectdescription, hosts, connectordescription, requestExample, and
+    responseExample are optional fields (read via .get()).
 
 --------------------------------------------------------------------------------
 2. DIRECTORY CONSTANTS
@@ -101,6 +124,9 @@ TEMPLATE_CONFIG_JAVA =
   $TEMPLATECONNECTORDIR\com.telus.connector.svcqualification.config\
     src\com\telus\connector\svcqualification\TemplateConfigurationComponent.java.txt
 
+TEMPLATE_SPEC_MD =
+  $TEMPLATEDIR\ConnectorSpecTemplate.md.txt
+
 --------------------------------------------------------------------------------
 3. SCRIPT REQUIREMENTS
 --------------------------------------------------------------------------------
@@ -112,15 +138,18 @@ TEMPLATE_CONFIG_JAVA =
     a) Copying template directories to target locations.
     b) Editing copied files with data from the connector definition.
     c) Generating new files per connector based on defined templates.
+    d) Generating a Markdown connector specification document.
   Python standard library modules used:
   - os                     (path manipulation, file/directory operations)
   - json                   (JSON parsing)
   - shutil                 (recursive directory copy)
   - sys                    (command-line arguments, exit)
-  - re                     (regex for ConnectorGenerator conditional block
-                            parsing, date string detection, Service-Component
-                            stripping in MANIFEST.MF, and import injection
-                            in the converter)
+  - re                     (regex for ConnectorGenerator/SpecGenerator conditional
+                            block parsing, date string detection, Service-Component
+                            stripping in MANIFEST.MF, import injection in the
+                            converter, TOC anchor generation, and nodemanager
+                            block substitution)
+  - datetime               (datetime.date.today() for today's date in spec doc)
   - xml.etree.ElementTree  (XML element building for connectors.xml)
   - xml.dom.minidom        (XML pretty-printing for connectors.xml)
 
@@ -204,7 +233,7 @@ Project: $CONNECTORDIR\com.telus.connector.<projectname>.config
     Replace "svcqualification" with <projectname>
     Then strip any pre-existing Service-Component: entries (and any immediately
     preceding blank lines) that were copied from the template, using regex:
-      - Pattern 1: \n[\t ]*\nService-Component:[^\n]*(\n[ \t]+[^\n]*)* → ""
+      - Pattern 1: \n[\t ]*\nService-Component:[^\n]*(\n[ \t]+[^\n])* → ""
       - Pattern 2: \nService-Component:[^\n]*(\n[ \t]+[^\n])*          → ""
     This ensures only the freshly generated Service-Component entries
     (appended later by _append_service_components()) appear in the file.
@@ -412,85 +441,37 @@ For each connector, generate two outputs in the API project:
 
        package com.telus.connector.<projectname>.api.datatypes
 
-       import com.telus.common.api.datatypes.AbstractDataRecord
+       import com.telus.common.api.datatypes.DataRecord
+       import com.telus.common.api.datatypes.Entity
 
        struct <connectorid>Request {
-           <IDL fields derived from requestExample JSON>
+         <IDL fields from requestExample JSON, if provided>
        }
 
        struct <connectorid>Entity {
-           <IDL fields derived from responseExample JSON>
+         <IDL fields from responseExample JSON, if provided>
        }
 
-       <additional top-level struct definitions — one per nested object/array
-        found in requestExample or responseExample, emitted in discovery order,
-        deduplicated>
-
-       struct <connectorid>DataRecord : AbstractDataRecord {
-           <connectorid>Entity entityy
+       struct <connectorid>DataRecord extends DataRecord {
+         <connectorid>Entity entity
        }
 
-     Note: The entity field in DataRecord is named "entityy" (double-y) to
-     avoid a keyword clash with the IDL "entity" keyword.
+       ... (one set of structs per connector, plus any nested structs)
 
-     IDL field generation rules (_json_to_idl_fields):
-       - If the root JSON value is a list, the first element (if a dict) is
-         used for field inference.
-       - JSON object keys become IDL field declarations.
-       - Nested objects (dict values) → struct definition collected into
-         top_level_structs, emitted AFTER the parent struct (not inline).
-         Field declaration in parent: <StructName> <key>
-         (struct name = key.capitalize())
-       - Arrays of objects → struct definition collected into top_level_structs,
-         emitted separately. Field declaration uses array syntax:
-         <SingularName>[] <key>
-         Struct naming uses _singularize(key).capitalize().
-         _infer_fields_from_list() scans ALL elements for best non-null value.
-       - Primitive fields use _json_value_to_idl_type() → (idl_type, comment).
-       - top_level_structs is passed by reference through all recursive calls
-         and deduplicated before output.
-       - request_structs and entity_structs are collected separately and merged
-         (request first, then entity, deduplicated) in _write_types_idl().
-
-     _singularize(name) rules:
-       - ends with "ies"          → replace with "y"   (e.g. categories → category)
-       - ends with "sses","xes",
-         "ches","shes"            → strip last 2 chars  (e.g. addresses → address)
-       - ends with "s" (not "ss") → strip last char     (e.g. outages → outage)
-       - otherwise                → unchanged
-
-     _is_date_string(value) — returns True if the string matches a date/datetime
-     pattern (checked via regex, case-insensitive). Used to map string values
-     to the "date" IDL type instead of "string".
-
-     _json_value_to_idl_type(key, value, indent) — returns (type, comment):
-       bool              → ("bool", "")
-       int               → ("long", "")
-       float             → ("double", "")
-       str (date-like)   → ("date", "")
-       str (other)       → ("string", "")
-       None/null         → ("string", "// TODO: verify data type - null in sample")
-       list (empty)      → ("string[]",
-                            "// TODO: verify data type - empty array in sample")
-       list of bool      → ("bool[]", "")
-       list of int       → ("long[]", "")
-       list of float     → ("double[]", "")
-       list of str (date)→ ("date[]", "")
-       list of str       → ("string[]", "")
-       list (other)      → ("string[]",
-                            "// TODO: verify data type - empty array in sample")
-       other             → ("string", "")
-
-     _infer_fields_from_list(items, indent, top_level_structs):
-       - Collects all keys from the first element.
-       - For each key, finds the first non-null value across ALL elements.
-       - If all values are null: emits
-         string <key>  // TODO: verify data type - all values null in sample
-       - Nested objects → struct collected into top_level_structs,
-         field uses <StructName> <key>
-       - Nested list of objects → struct collected into top_level_structs,
-         field uses <SingularName>[] <key>
-       - Otherwise applies primitive logic via _json_value_to_idl_type().
+     IDL field type mapping (_json_to_idl_fields / _json_value_to_idl_type):
+       bool              → bool
+       int               → int
+       float             → float
+       str (date-like)   → string  (with // TODO: verify — looks like a date comment)
+       str (other)       → string
+       None              → string  (with // TODO: verify data type - all values null in sample)
+       list (empty)      → string[]  (with // TODO: verify data type - empty array in sample)
+       list of bool      → bool[]
+       list of int       → int[]
+       list of float     → float[]
+       list of str       → string[]
+       list of objects   → <SingularName>[]  (struct collected into top_level_structs)
+       dict              → <StructName>      (struct collected into top_level_structs)
 
      requestExample / responseExample handling:
        - Filenames are read from the connector's "requestExample" /
@@ -501,7 +482,7 @@ For each connector, generate two outputs in the API project:
        - If a file cannot be parsed, a [WARN] is printed and the body is
          left empty.
        - If the field is absent/null, the IDL struct body is left empty.
-       definition_file path is passed into generate_api_per_connector() so that
+     definition_file path is passed into generate_api_per_connector() so that
        example files can be resolved relative to the definition directory.
 
 --------------------------------------------------------------------------------
@@ -549,7 +530,7 @@ For each <connectorid>, generate the following files under:
     Generated by _write_pojo_java() if responseExample is provided.
     <responseStem> = filename stem of responseExample.
 
-    POJO generation rules (_write_pojo_java / _json_to_pojo_fields):
+  POJO generation rules (_write_pojo_java / _json_to_pojo_fields):
       - Reads the JSON example file (UTF-8, BOM-safe).
       - If the root JSON value is a list, the first element (if a dict) is used.
       - For each top-level key/value pair, generates a private field + getter + setter.
@@ -569,6 +550,7 @@ For each <connectorid>, generate the following files under:
           Nested POJO types → import com.telus.connector.<projectname>.model.<NestedClass>Pojo;
       - If the file is missing, empty, or unparseable, a stub class is written
         with a // TODO: add fields comment and a [WARN] is printed.
+
     Java type mapping (_json_to_pojo_fields):
       bool              → boolean
       int               → long
@@ -593,7 +575,7 @@ For each <connectorid>, generate the following files under:
       2. Process '// ConnectorGenerator: if <requestExample> != null' block:
            - If requestExample is present → keep the block body, strip directive lines.
            - If requestExample is absent  → strip the entire block including body.
-         This controls inclusion of the to<connectorid>Pojo() method.
+           This controls inclusion of the to<connectorid>Pojo() method.
       3. Apply token replacements:
            <projectname>     → projectname from JSON
            <connectorid>     → connectorid from JSON
@@ -624,31 +606,9 @@ For each <connectorid>, generate the following files under:
       - Reads the JSON example file (UTF-8, BOM-safe).
       - Unwraps list root to first element if applicable.
       - Returns a tuple: (top_level_body, helpers_str, nested_api_types)
-          top_level_body   : rv.set<Key>(...) lines — injected into the TODO marker.
-          helpers_str      : private convertToXxx() methods — injected before class '}'.
-          nested_api_types : list of struct names needing api.datatypes imports.
-      - For each top-level field:
-          Primitive / date / string / list of primitives:
-            → rv.set<Key>(<source_var>.get<Key>());
-          Nested object (dict):
-            → rv.set<Key>(convertTo<Key>(<source_var>.get<Key>()));
-              + generates a private convertTo<Key>(<Key>Pojo pojo) helper method
-          List of objects:
-            → for (<SingularName>Pojo item : safe(<source_var>.get<Key>())) {
-                  rv.get<Key>().add(convertTo<SingularName>(item));
-              }
-              + generates a private convertTo<SingularName>(<SingularName>Pojo pojo)
-                helper method
-      - Helper methods use <StructName>.create() (not new <StructName>()) because
-        API datatype structs use a factory create() method.
-      - Helper methods are generated recursively for all nested levels.
-      - Each helper method is deduplicated by struct name (generated only once).
-      - source_var parameter:
-          "pojo"    → used for to<connectorid>Entity() (from responseExample)
-          "request" → used for to<connectorid>Pojo()   (from requestExample)
-      - safe() method (already present in TemplateConverter.java.txt) handles
-        null iterables by returning an empty list, making null checks unnecessary
-        in for-each loops.
+          top_level_body   : rv.set<Key>(...) lines for each top-level field
+          helpers_str      : private convertToXxx() helper method bodies
+          nested_api_types : list of nested struct type names needing imports
       - If the JSON file is missing, empty, or unparseable, returns ("", "", [])
         and the TODO comment is left unchanged.
 
@@ -688,11 +648,126 @@ For each <connectorid>, generate the following files under:
     src\com\telus\connector\<projectname>\exception\TemplateException.java.txt
     src\com\telus\connector\<projectname>\factories\TemplateFactory.java.txt
   If a file is not found: print [WARN] and continue.
-
   Note: src path uses dots-as-separators rule for <projectname>.
 
 --------------------------------------------------------------------------------
-12. SCRIPT EXECUTION FLOW SUMMARY
+12. STEP 8 — GENERATE SPEC DOCUMENT
+--------------------------------------------------------------------------------
+
+Function: generate_spec_doc(projectname, connectors, definition, definition_file)
+Output:   $BASEDIR\docs\<projectname>-connector-spec.md
+
+  If TEMPLATE_SPEC_MD does not exist: print [WARN] and return (skip silently).
+
+  Template file: $TEMPLATEDIR\ConnectorSpecTemplate.md.txt
+  Read with UTF-8, BOM-safe encoding.
+
+  Processing steps (in order):
+
+  Step 1 — Today's date
+    Replace both occurrences of:
+      "//SpecGenerator: insert today's date in yyyy-mm-dd format"
+    with today's date formatted as YYYY-MM-DD (datetime.date.today().strftime("%Y-%m-%d")).
+    Applies to both the Document History table row and the Additional Information footer.
+
+  Step 2 — Project description
+    Replace:
+      "// SpecGenerator: Insert <projectdescription>"
+    with the value of "projectdescription" from the definition JSON.
+    If absent or empty: replace with "_No description provided._"
+
+  Step 3 — Connector Endpoints table
+    Replace the placeholder table row containing:
+      "SpecGenerator: Insert <hosts.env>"
+    with one Markdown table row per host entry:
+      | <env> | <hostname> | <authentication> |
+    If hosts list is empty: replace with "| | | |"
+
+  Step 4 — Nodemanager Definitions block
+    Replace the entire block from:
+      "// SpecGenerator: define nodemanager definition..."
+    up to (but not including) the next:
+      "// SpecGenerator: Insert pagebreak"
+    with generated Markdown sections, one per host per connector:
+
+      ### <env>
+
+      #### <connectorid>
+      ```xml
+      <service serviceId="com.telus.connector.<projectname>.<connectorid>.rest">
+          ...
+      </service>
+      ```
+
+    Authentication type determines the XML block:
+      - "basic" → includes endpoint, password, authenticationType=basic,
+                   timeout, username=APP_SOLVATIO
+      - "kong"  → includes endpoint, authenticationType=kong, timeout
+      - default → kong
+
+    endpoint value = <hostname>/<apiPath> (apiPath leading slash stripped)
+
+  Step 5 — Connector Definitions for-each loop
+    Marker: "// SpecGenerator: for each <connectorid>" ... "// SpecGenerator: end for"
+    (Note: "end for" must NOT match "end for loop")
+    Expands the body template once per connector, substituting:
+      \<connectorid\>  → connectorid
+      \<projectname\>  → projectname
+      "// SpecGenerator: Insert <connectordescription>"
+                       → connectordescription value, or "_No description provided._"
+      "// SpecGenerator: Insert \<requestExample\>Request object definition from IDL"
+                       → fenced IDL code block for <connectorid>Request struct
+                         (parsed from requestExample JSON via _json_to_idl_fields)
+      "// SpecGenerator: Insert \<responseExample\>Entity object definition from IDL"
+                       → fenced IDL code block for <connectorid>Entity struct
+                         (parsed from responseExample JSON via _json_to_idl_fields)
+      "// SpecGenerator: Insert pagebreak" (inside loop)
+                       → \n---\n\n
+
+    IDL block format (_idl_block_for_spec):
+      - If file is absent/empty: returns "_No example file provided._"
+      - If file cannot be parsed: returns "_Could not parse example file._"
+      - Otherwise: returns a fenced code block (``` ... ```) containing the
+        parent struct and all nested structs (blank line between structs).
+      - Appends **WARNINGS:** section for any fields with
+        "// TODO: verify data type - empty array in sample" comments,
+        formatted as: Unverified data type for <StructName>.<field> - empty array in sample<br>
+
+  Step 6 — Appendix A for-each loop
+    Marker: "// SpecGenerator: for each <connectorid>" ... "// SpecGenerator: end for loop"
+    Expands the body template once per connector, substituting:
+      "// SpecGenerator: Insert <requestExample>"
+                       → raw JSON content of requestExample file in a fenced code block,
+                         or "_No request example provided._" if absent/empty
+      "// SpecGenerator: Insert <responseExample>"
+                       → raw JSON content of responseExample file in a fenced code block,
+                         or "_No response example provided._" if absent/empty
+      "// SpecGenerator: Insert pagebreak" (inside loop)
+                       → \n---\n\n
+
+  Step 7 — Table of Contents
+    Replace:
+      "// SpecGenerator: Insert links to document sections"
+    with a Markdown TOC generated by scanning all headings (# through ######)
+    in the now-fully-processed template.
+    Format per heading:
+      <indent>- [<heading text>](#<anchor>)
+    where indent = "  " * (heading level - 1)
+    and anchor = heading text lowercased, non-word/non-space/non-hyphen chars
+    stripped, spaces replaced with hyphens.
+    If no headings found: "_No sections found._"
+
+  Step 8 — Remaining pagebreaks
+    Replace all remaining:
+      "// SpecGenerator: Insert pagebreak"
+    with \n---\n\n
+
+  Step 9 — Write output
+    Write final Markdown to: $BASEDIR\docs\<projectname>-connector-spec.md (UTF-8)
+    Create the docs\ directory if it does not exist.
+
+--------------------------------------------------------------------------------
+13. SCRIPT EXECUTION FLOW SUMMARY
 --------------------------------------------------------------------------------
 
 main()
@@ -723,33 +798,48 @@ main()
  ├── generate_api_per_connector()       ← Per connector: connectors.xml +
  │                                         <connectorid>Types.model IDL file
  │                                         (flat top-level structs, arrays,
- │                                          bool type, entityy field name)
- └── generate_impl_per_connector()      ← Per connector:
-                                            call\<connectorid>Connector.java
-                                              (from TemplateConnector.java.txt;
-                                               tokens: <projectname>, <connectorid>,
-                                               <requestExample>)
-                                            model\<requestStem>Pojo.java (if requestExample)
-                                            model\<responseStem>Pojo.java (if responseExample)
-                                              + recursive nested <ClassName>Pojo.java files
-                                              (field types use full Pojo suffix:
-                                               List<OutagePojo>, MetaPojo, etc.)
-                                            converter\<connectorid>Converter.java
-                                              (from TemplateConverter.java.txt;
-                                               ConnectorGenerator if/end-if block
-                                               controls to<connectorid>Pojo() inclusion;
-                                               TODO markers replaced with body lines only;
-                                               helper methods injected before class '};
-                                               api.datatypes imports injected for nested
-                                               struct types using .create() factory)
-                                            factories\<connectorid>Factory.java (from template)
-                                            exception\<connectorid>ConversionException.java
-                                              (from template)
-                                            + after all connectors: delete
-                                                TemplateConnector.java.txt,
-                                                TemplateConverter.java.txt,
-                                                TemplateException.java.txt,
-                                                TemplateFactory.java.txt
-                                                from their respective src subdirs
+ │                                          bool type, entity field name)
+ ├── generate_impl_per_connector()      ← Per connector:
+ │                                         call\<connectorid>Connector.java
+ │                                           (from TemplateConnector.java.txt;
+ │                                            tokens: <projectname>, <connectorid>,
+ │                                            <requestExample>)
+ │                                         model\<requestStem>Pojo.java (if requestExample)
+ │                                         model\<responseStem>Pojo.java (if responseExample)
+ │                                           + recursive nested <ClassName>Pojo.java files
+ │                                           (field types use full Pojo suffix:
+ │                                            List<OutagePojo>, MetaPojo, etc.)
+ │                                         converter\<connectorid>Converter.java
+ │                                           (from TemplateConverter.java.txt;
+ │                                            ConnectorGenerator if/end-if block
+ │                                            controls to<connectorid>Pojo() inclusion;
+ │                                            TODO markers replaced with body lines only;
+ │                                            helper methods injected before class '};
+ │                                            api.datatypes imports injected for nested
+ │                                            struct types using .create() factory)
+ │                                         factories\<connectorid>Factory.java (from template)
+ │                                         exception\<connectorid>ConversionException.java
+ │                                           (from template)
+ │                                         + after all connectors: delete
+ │                                             TemplateConnector.java.txt,
+ │                                             TemplateConverter.java.txt,
+ │                                             TemplateException.java.txt,
+ │                                             TemplateFactory.java.txt
+ │                                             from their respective src subdirs
+ └── generate_spec_doc()                ← Generate Markdown spec document from
+                                           ConnectorSpecTemplate.md.txt, processing
+                                           all // SpecGenerator: directives:
+                                             today's date (×2),
+                                             projectdescription,
+                                             hosts endpoints table,
+                                             nodemanager definitions (basic/kong),
+                                             connector definitions for-each loop
+                                               (connectordescription, IDL blocks
+                                                with WARNINGS for empty arrays),
+                                             appendix for-each loop
+                                               (raw JSON request/response blocks),
+                                             TOC (auto-generated from headings),
+                                             remaining pagebreaks → ---
+                                           Output: $BASEDIR\docs\<projectname>-connector-spec.md
 
 ================================================================================

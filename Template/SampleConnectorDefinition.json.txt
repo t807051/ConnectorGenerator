@@ -1,0 +1,40 @@
+{
+  "projectname": "hat",
+  "projectdescription" : "Connector to interface with Hybrid Action",
+  "hosts" : [
+	{
+	  "env" : "NP",
+	  "hostname" : "http://nonprod.hostname.com",
+	  "authentication" : "basic"
+	},
+	{
+	  "env" : "PR",
+	  "hostname" : "http://hostname.com",
+	  "authentication" : "kong"
+	}
+  ]
+  "connectors": [
+    {
+      "connectorid": "GetSiteOutages",
+	  "connectordescription" : "Retrieve a log of the site outages for a given period.",
+      "inputClass": "GetSiteOutagesRequest",
+      "entityClass": "GetSiteOutagesEntity",
+      "dataRecordClass": "GetSiteOutagesDataRecord",
+      "apiPath": "/service/v1/sites/{site}/outages/",
+      "httpMethod": "GET",
+	  "requestExample" : "GetSiteOutagesRequest.json",
+	  "responseExample" : "GetSiteOutagesResponse.json"
+    },
+    {
+      "connectorid": "GetSmartphoneData",
+	  "connectordescription" : "Retrieve the detailed smartphone data for a site.",
+      "inputClass": "GetSmartphoneDataRequest",
+      "entityClass": "GetSmartphoneDataEntity",
+      "dataRecordClass": "GetSmartphoneDataDataRecord",
+      "apiPath": "/service/v1/sites/{site}/smartphone-data",
+      "httpMethod": "GET",
+	  "requestExample" : "GetSmartphoneDataRequest.json",
+	  "responseExample" : "GetSmartphoneDataResponse.json"
+    }
+  ]
+}
