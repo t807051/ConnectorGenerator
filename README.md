@@ -65,7 +65,7 @@ The generator writes into the configured `BASEDIR` (default in code: `C:\TEMP`) 
 - `docs/` (generated connector spec: `<projectname>-connector-spec.md`)
 
 ## Configuration
-Paths are currently configured as constants at the top of `connector_generator/src/main.py` (e.g., `BASEDIR`, `TEMPLATEDIR`). Update these for your environment before running.
+Paths are configured as constants in `connector_generator/src/settings.py` (e.g., `BASEDIR`, `TEMPLATEDIR`). Update these for your environment before running.
 
 ## Development
 Run tests:

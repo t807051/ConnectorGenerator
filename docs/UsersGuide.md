@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The**Connector Project Generator**(`main.py`) is a Python script that automates the creation of a complete Insight connector project from a single JSON definition file. Given a definition file describing one or more connectors, the script:
+The **Connector Project Generator** is a Python CLI package that automates the creation of a complete Insight connector project from a single JSON definition file. Given a definition file describing one or more connectors, the tool:
 
 - Copies the template project structure to the target output directories.
 - Renames all template placeholders (`svcqualification`) to your project name.
@@ -16,34 +16,41 @@ A single run produces a fully scaffolded, compilable connector project with no m
 
 |Requirement|Details|
 |---|---|
-|**Python**|Standard library only — no third-party packages needed. Python 3.6+ recommended.|
-|**Template directories**|Must exist at `TEMPLATEDIR` (default: `C:\github\t807051\ConnectorGenerator\Template`).|
-|**Output base directory**|Must exist at `BASEDIR` (default: `C:\TEMP`). The script will create subdirectories under it.|
-|**Definition JSON file**|You must author this file before running the script (see Section 4).|
+|**Python**|Standard library only — no third-party packages needed. Python 3.9+ required (per `pyproject.toml`).|
+|**Template directories**|Must exist at `TEMPLATEDIR` (default: `C:\github\t807051\ConnectorGenerator\Template`).|
+|**Output base directory**|Must exist at `BASEDIR` (default: `C:\TEMP`). The tool will create subdirectories under it.|
+|**Definition JSON file**|You must author this file before running (see Section 4).|
 |**Example JSON files**|Optional but recommended — placed in the same folder as the definition file (see Section 5).|
 
 ---
 
-## 3. Running the Script
+## 3. Running the Generator
 
-DownloadCopy code
+**Option A — from source (no install required):**
 
 ```
-python main.py <definition.json>
+python connector_generator/src/main.py <definition.json>
 ```
 
-**Example:**
-```
-python main.py C:\MyProject\inventory.tmf.json
+**Option B — installed package:**
+
+```bash
+pip install -e .
+connector-generator <definition.json>
 ```
 
-The script prints progress to the console as it works through each step. Warnings are prefixed with `[WARN]` and errors with `[ERROR]`. A successful run ends with:
+**Example (from source):**
+```
+python connector_generator/src/main.py C:\MyProject\inventory.tmf.json
+```
+
+The tool prints progress to the console as it works through each step. Warnings are prefixed with `[WARN]` and errors with `[ERROR]`. A successful run ends with:
 
 ```
 === Generation Complete ===
 ```
 
-If the script fails, it prints `[ERROR] Generation failed: <reason>` and exits. No partial cleanup is performed, so you may need to manually remove any partially created output directories before re-running.
+If the tool fails, it prints `[ERROR] Generation failed: <reason>` and exits. No partial cleanup is performed, so you may need to manually remove any partially created output directories before re-running.
 
 ---
 
@@ -120,7 +127,7 @@ A single project can contain multiple connectors. Add one object per connector t
 
 ### 4.4 Validation Rules
 
-The script validates the definition file on startup and exits with an error if:
+The tool validates the definition file on startup and exits with an error if:
 
 - The file does not exist or is empty.
 - The file is not valid JSON.
@@ -144,13 +151,13 @@ The `requestExample` and `responseExample` files are plain JSON files that r
 ### 5.2 Tips for Writing Example Files
 
 - Use **realistic, non-null values** wherever possible. Null values result in `// TODO: verify data type` comments in the generated code.
-- For **list fields**, include at least one element so the script can infer the list element type.
-- For **nested objects**, include all expected fields — the script reads the full structure recursively.
-- If the root of the JSON is a list (array), the script uses the **first element** for field inference.
+- For **list fields**, include at least one element so the tool can infer the list element type.
+- For **nested objects**, include all expected fields — the tool reads the full structure recursively.
+- If the root of the JSON is a list (array), the tool uses the **first element** for field inference.
 
 ### 5.3 JSON-to-Java Type Mapping
 
-The script maps JSON value types to Java/IDL types as follows:
+The tool maps JSON value types to Java/IDL types as follows:
 
 |JSON value type|Java (POJO)|IDL|
 |---|---|---|
@@ -166,7 +173,7 @@ The script maps JSON value types to Java/IDL types as follows:
 
 ---
 
-## 6. What the Script Generates
+## 6. What the Tool Generates
 
 After a successful run, the following output is produced under `C:\TEMP\` (or your configured `BASEDIR`):
 
@@ -218,20 +225,20 @@ The converter (`<connectorid>Converter.java`) is the most complex generated file
 - **`to<connectorid>Pojo(<connectorid>Request request)`** — Maps the IDL request struct fields to the request POJO. Only generated if `requestExample` is provided.
 - **`private convertTo<NestedType>(...)`** — Helper methods auto-generated for each nested object or list of objects found in the example JSON. These use `.create()` (not `new`) to instantiate API datatype structs.
 
-**After generation**, review the converter for any `// TODO:` comments — these indicate fields where the script could not determine the type (e.g. null values in the example JSON) and require manual attention.
+**After generation**, review the converter for any `// TODO:` comments — these indicate fields where the tool could not determine the type (e.g. null values in the example JSON) and require manual attention.
 
 ---
 
 ## 8. Configuring Output Directories
 
-The script's directory paths are defined as constants at the top of `main.py`. If your environment differs from the defaults, edit these values before running:
+The tool's directory paths are defined as constants in `connector_generator/src/settings.py`. If your environment differs from the defaults, edit these values before running:
 
 |Constant|Default|Description|
 |---|---|---|
 |`BASEDIR`|`C:\TEMP`|Root output directory|
 |`TEMPLATEDIR`|`C:\github\t807051\ConnectorGenerator\Template`|Location of the template projects|
 
-The alternate `BASEDIR` (`C:\github\Insight10.8\Insight`) and `TEMPLATEDIR` (`C:\cb\Insight10.8\Template`) are commented out in the script and can be swapped in by editing the constants section.
+The alternate `BASEDIR` (`C:\github\Insight10.8\Insight`) and `TEMPLATEDIR` (`C:\cb\Insight10.8\Template`) are commented out in `settings.py` and can be swapped in by editing those constants.
 
 ---
 
@@ -306,7 +313,7 @@ C:\MyProject\
 
 **Run:**
 ```
-python main.py C:\MyProject\inventory.tmf.json
+python connector_generator/src/main.py C:\MyProject\inventory.tmf.json
 ```
 
 **Key generated files:**
@@ -333,7 +340,4 @@ C:\MyProject\connectors\com.telus.connector.inventory.tmf.config\
     CreateInventoryItemConfigurationComponent.java
 ```
 
-**copilot knowledge base citations**
 
-- [1] "current_main.py.txt"
-- [2] "Requirements.txt"

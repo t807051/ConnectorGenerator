@@ -1,1 +1,1 @@
-"""Tests for the connector_generator package."""
+# Test suite for Connector Generator
