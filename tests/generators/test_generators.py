@@ -2,8 +2,6 @@
 import json
 import os
 
-import pytest
-
 from connector_generator.src.api_generator import (
     _json_to_idl_fields,
     _json_value_to_idl_type,
@@ -21,7 +19,7 @@ from connector_generator.src.impl_generator import (
     _json_to_conversion_logic,
     _write_java_stub,
 )
-from connector_generator.src.definition_loader import load_definition
+from connector_generator.src import kb_generator
 
 
 # ─────────────────────────────────────────────
@@ -214,4 +212,321 @@ class TestWriteJavaStub:
         _write_java_stub(out, "order.tmf", "Foo", "converter")
         content = open(out).read()
         assert "class FooConverter" in content
+
+
+class TestKbSfcxGeneration:
+    def test_generates_one_sfcx_per_connector(self, tmp_path, monkeypatch):
+        call_root = tmp_path / "call"
+        template_root = tmp_path / "template_call"
+        projectname = "hat"
+        project_call_dir = call_root / projectname
+        project_call_dir.mkdir(parents=True)
+        (template_root / "svcqualification").mkdir(parents=True)
+
+        template_content = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<process:ProcessDefinition name="GetSvcQualification">\n'
+            '  <elements xsi:type="process:ConnectorTask" name="SyncCustomerTVSubscriptionsList"/>\n'
+            '  <connector connectorId="com.telus.connector.svcqualification.GetSvcQualification"/>\n'
+            '  <parameterType signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>\n'
+            '  <resultType signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>\n'
+            '  <type signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationDataRecord;"/>\n'
+            '  <source>return GetSvcQualificationDataRecord.create()</source>\n'
+            '  <notation:Diagram name="SyncCustomerTvSubscriptionsList"/>\n'
+            '</process:ProcessDefinition>\n'
+        )
+
+        legacy_path = project_call_dir / "GetSvcQualification.sfcx"
+        legacy_path.write_text(template_content, encoding="utf-8")
+
+        monkeypatch.setattr(kb_generator, "CALLDIR", str(call_root))
+        monkeypatch.setattr(kb_generator, "TEMPLATEKBCALLDIR", str(template_root))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        connectors = [
+            {
+                "connectorid": "GetSiteOutages",
+                "inputClass": "GetSiteOutagesRequest",
+                "dataRecordClass": "GetSiteOutagesDataRecord",
+            },
+            {
+                "connectorid": "GetSmartphoneData",
+                "inputClass": "GetSmartphoneDataRequest",
+                "dataRecordClass": "GetSmartphoneDataDataRecord",
+            },
+        ]
+
+        kb_generator.generate_kb_call_sfcx_per_connector(projectname, connectors)
+
+        first = project_call_dir / "GetSiteOutages.sfcx"
+        second = project_call_dir / "GetSmartphoneData.sfcx"
+        assert first.exists()
+        assert second.exists()
+        assert not legacy_path.exists()
+
+        first_content = first.read_text(encoding="utf-8")
+        assert "connectorId=\"com.telus.connector.hat.GetSiteOutages\"" in first_content
+        assert "GetSiteOutagesRequest" in first_content
+        assert "GetSiteOutagesDataRecord" in first_content
+        assert "svcqualification" not in first_content
+        # Issues 1 & 2: stale display names must be replaced
+        assert "SyncCustomerTVSubscriptionsList" not in first_content
+        assert "SyncCustomerTvSubscriptionsList" not in first_content
+        assert first_content.count('name="GetSiteOutages"') >= 2  # ProcessDefinition + ConnectorTask + Diagram
+
+
+class TestKbQaGeneration:
+    """Tests for generate_kb_qa_per_connector."""
+
+    # ── shared fixtures ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _make_env(tmp_path, projectname="inventory.tmf"):
+        """
+        Build a fake QADIR/projectname tree with legacy template copies,
+        mimicking what copy_templates() leaves behind.
+        """
+        qa_root      = tmp_path / "qa"
+        template_root = tmp_path / "template_qa"
+        projectdir   = qa_root / projectname
+        legacy_sub   = projectdir / "getsvcqualification"
+        legacy_sub.mkdir(parents=True)
+        (template_root / "svcqualification" / "getsvcqualification").mkdir(parents=True)
+
+        sfcx_content = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<process:ProcessDefinition name="QAIssueGetSvcQualification" processType="ISSUE">\n'
+            '  <elements xsi:type="process:ConnectorTask" name="StbDiagnosticsQuery"/>\n'
+            '  <connector connectorId="com.telus.connector.svcqualification.GetSvcQualification"/>\n'
+            '  <parameterType signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>\n'
+            '  <resultType signature="Lcom.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest;"/>\n'
+            '  <type signature="Lqa.da.svcqualification.QAIssueGetSvcQualification;"/>\n'
+            '  <form formId="qa.da.svcqualification.getsvcqualification.QAIssueGetSvcQualification"/>\n'
+            '  <source>import com.telus.connector.svcqualification.api.datatypes.GetSvcQualificationRequest\n'
+            'return GetSvcQualificationRequest.create</source>\n'
+            '  <notation:Diagram name="QAIssueSTBDiagnosticQuery"/>\n'
+            '</process:ProcessDefinition>\n'
+        )
+        sfrm2_content = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<model:Form>\n'
+            '  <parameters name="lpdsId"/>\n'
+            '  <variants formId="qa.da.svcqualification.getsvcqualification.QAIssueGetSvcQualification"/>\n'
+            '  <title value="Get Servcice Qualification"/>\n'
+            '</model:Form>\n'
+        )
+
+        (legacy_sub / "QAIssueGetSvcQualification.sfcx").write_text(sfcx_content, encoding="utf-8")
+        (legacy_sub / "QAIssueGetSvcQualification.sfrm2").write_text(sfrm2_content, encoding="utf-8")
+        (projectdir / "QAIssuesSvcQualification.model").write_text("", encoding="utf-8")
+        (projectdir / "QAIssuesSvcQualification_en_CA.content").write_text("", encoding="utf-8")
+        (projectdir / "QAIssuesSvcQualification_fr_CA.content").write_text("", encoding="utf-8")
+
+        return qa_root, projectdir
+
+    @staticmethod
+    def _connectors():
+        return [
+            {
+                "connectorid": "GetSiteOutages",
+                "inputClass": "GetSiteOutagesRequest",
+                "dataRecordClass": "GetSiteOutagesDataRecord",
+                "connectordescription": "Retrieve site outages",
+            },
+            {
+                "connectorid": "GetSmartphoneData",
+                "inputClass": "GetSmartphoneDataRequest",
+                "dataRecordClass": "GetSmartphoneDataDataRecord",
+                "connectordescription": "",
+            },
+        ]
+
+    # ── file count & naming ─────────────────────────────────────────────────
+
+    def test_generates_one_subfolder_per_connector(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors())
+
+        assert (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfcx").exists()
+        assert (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfrm2").exists()
+        assert (projectdir / "getsmartphonedata" / "QAIssueGetSmartphoneData.sfcx").exists()
+        assert (projectdir / "getsmartphonedata" / "QAIssueGetSmartphoneData.sfrm2").exists()
+
+    # ── sfcx substitutions ──────────────────────────────────────────────────
+
+    def test_sfcx_connector_id_substituted(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfcx").read_text()
+        assert "QAIssueGetSiteOutages" in content
+        assert "com.telus.connector.inventory.tmf.GetSiteOutages" in content
+        assert "GetSiteOutagesRequest" in content
+
+    def test_sfcx_no_svcqualification_placeholder(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfcx").read_text()
+        assert "svcqualification" not in content
+
+    def test_sfcx_qa_package_substituted(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfcx").read_text()
+        assert "qa.da.inventory.tmf" in content
+        assert "qa.da.svcqualification" not in content
+
+    # ── sfrm2 substitutions ─────────────────────────────────────────────────
+
+    def test_sfrm2_connector_id_substituted(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfrm2").read_text()
+        assert "QAIssueGetSiteOutages" in content
+        assert "qa.da.inventory.tmf" in content
+        assert "svcqualification" not in content
+
+    def test_sfrm2_retains_stub_input_field(self, tmp_path, monkeypatch):
+        """lpdsId stub is preserved — developer updates form fields manually."""
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfrm2").read_text()
+        assert "lpdsId" in content
+
+    # ── project-level model file ────────────────────────────────────────────
+
+    def test_model_file_created_with_correct_name(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors())
+
+        assert (projectdir / "QAIssuesInventory.tmf.model").exists()
+
+    def test_model_file_contains_all_connectors(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors())
+
+        content = (projectdir / "QAIssuesInventory.tmf.model").read_text()
+        assert "package qa.da.inventory.tmf" in content
+        assert "issue QAIssueGetSiteOutages" in content
+        assert "issue QAIssueGetSmartphoneData" in content
+        assert "getsiteoutages.QAIssueGetSiteOutages" in content
+        assert "getsmartphonedata.QAIssueGetSmartphoneData" in content
+
+    # ── localisation content files ──────────────────────────────────────────
+
+    def test_en_content_file_created(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors())
+
+        content = (projectdir / "QAIssuesInventory.tmf_en_CA.content").read_text()
+        assert "qa.da.inventory.tmf.QAIssueGetSiteOutages" in content
+        assert 'title = "Retrieve site outages"' in content
+        assert "qa.da.inventory.tmf.QAIssueGetSmartphoneData" in content
+
+    def test_fr_content_file_has_blank_titles(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors())
+
+        content = (projectdir / "QAIssuesInventory.tmf_fr_CA.content").read_text()
+        assert 'title = ""' in content
+
+    # ── legacy cleanup ──────────────────────────────────────────────────────
+
+    def test_legacy_templates_removed(self, tmp_path, monkeypatch):
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors())
+
+        assert not (projectdir / "QAIssuesSvcQualification.model").exists()
+        assert not (projectdir / "QAIssuesSvcQualification_en_CA.content").exists()
+        assert not (projectdir / "QAIssuesSvcQualification_fr_CA.content").exists()
+        assert not (projectdir / "getsvcqualification").exists()
+
+    # ── stale display-name fixes (issues 3, 4, 5) ──────────────────────────
+
+    def test_sfcx_connector_task_name_replaced(self, tmp_path, monkeypatch):
+        """Issue 3: ConnectorTask name='StbDiagnosticsQuery' → connectorid."""
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfcx").read_text()
+        assert "StbDiagnosticsQuery" not in content
+        assert 'name="GetSiteOutages"' in content
+
+    def test_sfcx_diagram_name_replaced(self, tmp_path, monkeypatch):
+        """Issue 4: notation:Diagram name='QAIssueSTBDiagnosticQuery' → QAIssue<connectorid>."""
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfcx").read_text()
+        assert "QAIssueSTBDiagnosticQuery" not in content
+        assert 'name="QAIssueGetSiteOutages"' in content
+
+    def test_sfrm2_title_replaced(self, tmp_path, monkeypatch):
+        """Issue 5: stale/misspelled form title replaced with connectorid."""
+        qa_root, projectdir = self._make_env(tmp_path)
+        monkeypatch.setattr(kb_generator, "QADIR", str(qa_root))
+        monkeypatch.setattr(kb_generator, "TEMPLDATEKBQADIR", str(tmp_path / "template_qa"))
+        monkeypatch.setattr(kb_generator, "TEMPLATE_NAME", "svcqualification")
+
+        kb_generator.generate_kb_qa_per_connector("inventory.tmf", self._connectors()[:1])
+
+        content = (projectdir / "getsiteoutages" / "QAIssueGetSiteOutages.sfrm2").read_text()
+        assert "Get Servcice Qualification" not in content
+        assert "GetSiteOutages" in content
 

@@ -12,7 +12,7 @@
 	  "hostname" : "http://hostname.com",
 	  "authentication" : "kong"
 	}
-  ]
+  ],
   "connectors": [
     {
       "connectorid": "GetSiteOutages",

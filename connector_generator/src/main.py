@@ -9,6 +9,12 @@ try:
     )
     from .spec_generator import generate_spec_doc
     from .config_generator import generate_config_per_connector as _generate_config_per_connector
+    from .kb_generator import (
+        generate_kb_call_sfcx_per_connector as _generate_kb_call_sfcx_per_connector,
+    )
+    from .kb_generator import (
+        generate_kb_qa_per_connector as _generate_kb_qa_per_connector,
+    )
     from .api_generator import (
         generate_api_per_connector as _generate_api_per_connector,
         json_to_idl_fields as _api_json_to_idl_fields,
@@ -25,6 +31,12 @@ except ImportError:
     )
     from spec_generator import generate_spec_doc
     from config_generator import generate_config_per_connector as _generate_config_per_connector
+    from kb_generator import (
+        generate_kb_call_sfcx_per_connector as _generate_kb_call_sfcx_per_connector,
+    )
+    from kb_generator import (
+        generate_kb_qa_per_connector as _generate_kb_qa_per_connector,
+    )
     from api_generator import (
         generate_api_per_connector as _generate_api_per_connector,
         json_to_idl_fields as _api_json_to_idl_fields,
@@ -45,6 +57,16 @@ def generate_api_per_connector(projectname: str, connectors: list, definition_fi
 def generate_impl_per_connector(projectname: str, connectors: list, definition_file: str):
     """Compatibility wrapper delegating to impl_generator.generate_impl_per_connector."""
     return _generate_impl_per_connector(projectname, connectors, definition_file)
+
+
+def generate_kb_call_sfcx_per_connector(projectname: str, connectors: list):
+    """Compatibility wrapper delegating to kb_generator.generate_kb_call_sfcx_per_connector."""
+    return _generate_kb_call_sfcx_per_connector(projectname, connectors)
+
+
+def generate_kb_qa_per_connector(projectname: str, connectors: list):
+    """Compatibility wrapper delegating to kb_generator.generate_kb_qa_per_connector."""
+    return _generate_kb_qa_per_connector(projectname, connectors)
 
 
 def main():
@@ -74,6 +96,8 @@ def main():
         edit_build_files(projectname)
         edit_api_files(projectname)
         edit_impl_files(projectname)
+        generate_kb_call_sfcx_per_connector(projectname, connectors)
+        generate_kb_qa_per_connector(projectname, connectors)
         generate_config_per_connector(projectname, connectors)
         generate_api_per_connector(projectname, connectors, json_file)
         generate_impl_per_connector(projectname, connectors, json_file)

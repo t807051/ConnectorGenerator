@@ -12,6 +12,8 @@ connector_generator.src.*; this module re-exports the public surface so that:
 from connector_generator.src.main import (  # noqa: F401
     main,
     generate_config_per_connector,
+    generate_kb_call_sfcx_per_connector,
+    generate_kb_qa_per_connector,
     generate_api_per_connector,
     generate_impl_per_connector,
 )

@@ -120,22 +120,29 @@ def edit_api_files(projectname: str):
         os.path.join(api_dir, r"META-INF\MANIFEST.MF"), "svcqualification", projectname
     )
 
-    old_pkg = os.path.join(api_dir, "src", "com", "telus", "connector", TEMPLATE_NAME, "api")
-    new_pkg = os.path.join(
-        api_dir,
-        "src",
-        "com",
-        "telus",
-        "connector",
-        projectname_to_path(projectname),
-        "api",
-    )
-    if os.path.exists(old_pkg):
-        os.makedirs(os.path.dirname(new_pkg), exist_ok=True)
-        os.rename(old_pkg, new_pkg)
-        print(f"Renamed package folder: {old_pkg} -> {new_pkg}")
-    else:
-        print(f"[WARN] Package folder not found, skipping rename: {old_pkg}")
+    src_roots = ["src", "src-gen"]
+    renamed_any = False
+    for src_root in src_roots:
+        old_pkg = os.path.join(
+            api_dir, src_root, "com", "telus", "connector", TEMPLATE_NAME, "api"
+        )
+        new_pkg = os.path.join(
+            api_dir,
+            src_root,
+            "com",
+            "telus",
+            "connector",
+            projectname_to_path(projectname),
+            "api",
+        )
+        if os.path.exists(old_pkg):
+            os.makedirs(os.path.dirname(new_pkg), exist_ok=True)
+            os.rename(old_pkg, new_pkg)
+            print(f"Renamed package folder: {old_pkg} -> {new_pkg}")
+            renamed_any = True
+
+    if not renamed_any:
+        print("  [INFO] No template API package folder found to rename (src/src-gen)")
 
 
 def edit_impl_files(projectname: str):

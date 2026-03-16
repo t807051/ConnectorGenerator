@@ -7,6 +7,7 @@ import pytest
 from connector_generator.main import (
     main,
     generate_config_per_connector,
+    generate_kb_call_sfcx_per_connector,
     generate_api_per_connector,
     generate_impl_per_connector,
 )
@@ -101,6 +102,7 @@ def test_load_definition_connector_missing_required_field(tmp_path):
 def test_public_wrappers_are_callable():
     assert callable(main)
     assert callable(generate_config_per_connector)
+    assert callable(generate_kb_call_sfcx_per_connector)
     assert callable(generate_api_per_connector)
     assert callable(generate_impl_per_connector)
 
