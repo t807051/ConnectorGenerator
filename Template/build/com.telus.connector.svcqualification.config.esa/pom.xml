@@ -1,0 +1,72 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<artifactId>com.telus.connector.svcqualification.build</artifactId>
+		<groupId>com.telus.connector.build</groupId>
+		<version>0.0.1-SNAPSHOT</version>
+		<relativePath>../com.telus.connector.svcqualification.build</relativePath>
+	</parent>
+
+	<groupId>com.telus.connector.build</groupId>
+	<artifactId>com.telus.connector.svcqualification.config.esa</artifactId>
+	<version>${module.version}</version>
+	<packaging>esa</packaging>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.telus.connector.build</groupId>
+			<artifactId>${bundleId.config}</artifactId>
+			<version>${module.version}</version>
+		</dependency>
+	</dependencies>
+
+	<properties>
+		<module.version>${version.config}</module.version>
+		<subsystemVersion>${module.version}</subsystemVersion>
+		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.aries</groupId>
+				<artifactId>esa-maven-plugin</artifactId>
+				<version>1.0.0</version>
+				<extensions>true</extensions>
+				<configuration>
+					<generateManifest>true</generateManifest>
+					<instructions>
+						<Subsystem-SymbolicName>${bundleId.config}</Subsystem-SymbolicName>
+						<Subsystem-Type>osgi.subsystem.feature</Subsystem-Type>
+						<Subsystem-Version>${subsystemVersion}</Subsystem-Version>
+						<Provide-Capability>solvatio.resource; id="${bundleId.config}"; version="${subsystemVersion}"; type="connector.config"</Provide-Capability>
+					</instructions>
+					<archiveContent>content</archiveContent>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<id>move-esa</id>
+						<phase>package</phase>
+						<configuration>
+							<target name="move-esa-artifact">
+								<copy todir="${esa.collection.folder}" flatten="true">
+									<fileset dir="target/" includes="*.esa" />
+								</copy>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

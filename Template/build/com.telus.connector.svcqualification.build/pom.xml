@@ -1,0 +1,45 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.telus.connector.build</groupId>
+	<artifactId>com.telus.connector.svcqualification.build</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+    <parent>
+        <artifactId>com.telus.connector.build</artifactId>
+        <groupId>com.telus.connector.build</groupId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../com.telus.connector.build</relativePath>
+    </parent>
+  
+    <build>
+        <plugins>
+        </plugins>
+    </build>
+ 
+	<properties>
+		<bundleId.impl>com.telus.connector.svcqualification</bundleId.impl>
+		<version.impl>1.0.2</version.impl>
+
+		<bundleId.api>com.telus.connector.svcqualification.api</bundleId.api>
+		<version.api>1.0.1</version.api>
+
+		<bundleId.config>com.telus.connector.svcqualification.config</bundleId.config>
+		<version.config>1.0.0</version.config>
+	</properties>
+	
+	<modules>
+		<module>../../connectors/com.telus.connector.svcqualification</module>
+ 		<module>../com.telus.connector.svcqualification.esa</module>	
+		<module>../../connectors/com.telus.connector.svcqualification.api</module>
+		<module>../com.telus.connector.svcqualification.api.esa</module>	
+		<module>../../connectors/com.telus.connector.svcqualification.config</module>
+		<module>../com.telus.connector.svcqualification.config.esa</module>	
+		<module>../com.telus.connector.svcqualification.feature</module>	
+		
+		<!-- <module>../com.telus.connector.svcqualification.p2</module> -->
+	</modules>
+</project>
+
