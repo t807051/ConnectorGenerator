@@ -31,6 +31,19 @@ Minimum structure:
 ```json
 {
   "projectname": "inventory.tmf",
+  "projectdescription" : "Connector to interface with Inventory System",
+  "hosts" : [
+	  {
+	    "env" : "NP",
+	    "hostname" : "https://apigw-private-nane-np-001.tsl.telus.com",
+	    "authentication" : "kong"
+	  },
+	  {
+	    "env" : "PR",
+  	  "hostname" : "https://apigw-private-nane-pr-001.tsl.telus.com",
+	    "authentication" : "kong"
+	  }
+  ],
   "connectors": [
     {
       "connectorid": "CreateInventoryItem",
