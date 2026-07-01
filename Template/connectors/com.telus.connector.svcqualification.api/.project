@@ -42,7 +42,6 @@
 		</buildCommand>
 	</buildSpec>
 	<natures>
-		<nature>org.eclipse.m2e.core.maven2Nature</nature>
 		<nature>org.eclipse.xtext.ui.shared.xtextNature</nature>
 		<nature>com.iisy.solvatio.studio.connector.api</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
