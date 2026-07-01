@@ -32,7 +32,6 @@
 		</buildCommand>
 	</buildSpec>
 	<natures>
-		<nature>org.eclipse.m2e.core.maven2Nature</nature>
 		<nature>com.iisy.solvatio.studio.connector.config</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 		<nature>org.eclipse.pde.PluginNature</nature>
